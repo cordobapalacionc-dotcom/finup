@@ -182,6 +182,7 @@
           <!-- LISTADO DE CATEGORÍAS CON PROGRESO -->
           <section class="categorias-section">
             <h3>📂 Categorías de Gastos</h3>
+            <p v-if="errorCategoria" class="error-categoria">{{ errorCategoria }}</p>
             <div class="categorias-list">
               <div v-for="cat in categorias" :key="cat.nombre" class="categoria-group">
                 <div class="categoria-item">
@@ -194,12 +195,21 @@
                   </div>
                   <div class="categoria-monto">
                     <div class="monto">{{ moneda(cat.monto) }}</div>
-                    <div class="porcentaje">{{ cat.porcentaje }}%</div>
+                    <div class="porcentaje">{{ cat.porcentaje }}%
+                      <button v-if="sePuedeBorrar(cat)" class="btn-borrar-categoria" title="Borrar los gastos de esta categoría" @click="confirmandoCategoria = cat.id">🗑️</button>
+                    </div>
                   </div>
                 </div>
                 <div class="categoria-progreso">
                   <div class="progreso-bg">
                     <div class="progreso-fill" :style="{ width: cat.porcentaje + '%', background: cat.color }"></div>
+                  </div>
+                </div>
+                <div v-if="confirmandoCategoria === cat.id" class="confirmar-categoria">
+                  <span>¿Borrar los gastos de <b>{{ cat.nombre }}</b> de este periodo ({{ moneda(cat.monto) }})? El dinero vuelve a tu saldo.</span>
+                  <div>
+                    <button class="btn-confirmar-no" @click="confirmandoCategoria = null">No</button>
+                    <button class="btn-confirmar-si" @click="borrarGastosCategoria(cat)">Sí, borrar</button>
                   </div>
                 </div>
               </div>
@@ -273,6 +283,7 @@ const categorias = computed(() => {
     const segmento = fraccion * CIRCUNFERENCIA;
     const cat = {
       ...estilo,
+      id: c.id,
       nombre: c.nombre,
       monto: c.monto,
       porcentaje: Math.round(fraccion * 100),
@@ -310,6 +321,24 @@ const cargarDatos = async () => {
   }
 };
 onMounted(cargarDatos);
+
+// --- BORRAR LOS GASTOS DE UNA CATEGORÍA ---
+// Primer clic: pide confirmación en la misma fila. "Sí, borrar" elimina los gastos del periodo elegido.
+const confirmandoCategoria = ref(null);
+const errorCategoria = ref('');
+const sePuedeBorrar = (cat) => cat.monto > 0 && cat.nombre !== 'Ahorro para metas';
+
+const borrarGastosCategoria = async (cat) => {
+  errorCategoria.value = '';
+  try {
+    await api(`/admin/gastos-categoria/${cat.id}?dias=${periodoSeleccionado.value}`, { method: 'DELETE' });
+    confirmandoCategoria.value = null;
+    await cargarDatos();
+  } catch (e) {
+    errorCategoria.value = e.message;
+  }
+};
+
 
 // --- REPORTES GUARDADOS ---
 const reporteAbierto = ref(null);
@@ -2509,4 +2538,17 @@ tr:hover {
 .detalle-vacio { font-size: 13px; color: var(--gray-text); margin: 12px 0 0; }
 .sin-reportes { text-align: center; color: var(--gray-text); font-size: 14px; padding: 25px 10px; }
 .sin-reportes div { font-size: 30px; margin-bottom: 6px; }
+</style>
+
+<style scoped>
+/* --- Borrar los gastos de una categoría --- */
+.btn-borrar-categoria { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 8px; opacity: 0.55; margin-left: 6px; }
+.btn-borrar-categoria:hover { opacity: 1; background: rgba(229, 62, 62, 0.12); }
+.confirmar-categoria { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(229, 62, 62, 0.07); border: 1px solid rgba(229, 62, 62, 0.25); border-radius: 10px; padding: 8px 10px; margin-top: 8px; font-size: 13px; color: #742a2a; }
+.confirmar-categoria div { display: flex; gap: 6px; }
+.btn-confirmar-no, .btn-confirmar-si { border: none; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-confirmar-no { background: #edf2f7; color: #4a5568; }
+.btn-confirmar-si { background: #e53e3e; color: white; }
+.btn-confirmar-si:hover { background: #c53030; }
+.error-categoria { font-size: 13px; color: #e53e3e; margin: 0 0 10px; }
 </style>

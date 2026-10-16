@@ -546,6 +546,26 @@ app.get(['/api/admin/gastos-categoria', '/api/reportes/gastos-categoria'], (req,
         GROUP BY c.id ORDER BY monto DESC`).all(...params));
 });
 
+// Borra los gastos propios de una categoría (opcionalmente solo los de los últimos ?dias=N). El dinero vuelve al saldo.
+// Los abonos a metas no se borran aquí: se sacan desde la meta para que su ahorro siga cuadrando.
+app.delete(['/api/admin/gastos-categoria/:id', '/api/reportes/gastos-categoria/:id'], (req, res) => {
+    const categoria = prepare(`SELECT * FROM categorias WHERE id = ? AND tipo = 'gasto'`).get(req.params.id);
+    if (!categoria) return noEncontrado(res);
+    if (categoria.nombre === 'Ahorro para metas') {
+        return res.status(400).json({ error: "El ahorro de tus metas se saca desde la sección Metas" });
+    }
+    const dias = parseInt(req.query.dias, 10);
+    const condicionDias = dias > 0 ? `AND date(fecha) > date('now','localtime', ?)` : '';
+    const params = dias > 0 ? [req.usuario.id, categoria.id, `-${dias} days`] : [req.usuario.id, categoria.id];
+    const filtro = `FROM transacciones WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND meta_id IS NULL ${condicionDias}`;
+    const resultado = enTransaccion(() => {
+        const { cantidad, monto } = prepare(`SELECT COUNT(*) AS cantidad, IFNULL(SUM(monto), 0) AS monto ${filtro}`).get(...params);
+        prepare(`DELETE ${filtro}`).run(...params);
+        return { borrados: cantidad, monto };
+    });
+    res.json({ mensaje: "Gastos eliminados", ...resultado, saldo: saldoDe(req.usuario.id) });
+});
+
 app.get('/api/admin/transacciones', (req, res) => {
     const limite = Math.min(parseInt(req.query.limite, 10) || 50, 500);
     res.json(prepare(`

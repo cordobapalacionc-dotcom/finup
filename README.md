@@ -34,7 +34,7 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | **Página principal** | Resumen de ingresos, gastos y saldo, metas activas y pagos recurrentes con su progreso. |
 | **Gastos e Ingresos** | Registrar, editar y eliminar movimientos por categoría, con gráfica semanal. |
 | **Metas** | Crear metas de ahorro, **abonarles dinero de tu saldo** (o completarlas de un clic), **sacar el dinero de una meta cumplida** de vuelta al saldo y definir presupuestos por categoría. |
-| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gráfica, gasto por categoría y reportes guardados que se pueden desplegar y borrar. |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gráfica, gasto por categoría (con opción de **borrar los gastos de una categoría** en el periodo, y el dinero vuelve al saldo) y reportes guardados que se pueden desplegar y borrar. |
 | **Pagos recurrentes** | Programar pagos (luz, arriendo, etc.) y registrar abonos hasta completarlos. |
 | **Configuración** | Cambiar nombre, correo y contraseña, y elegir **tema claro u oscuro**. |
 
@@ -45,7 +45,7 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | **Inicio** | Total de usuarios y sus propios ingresos, gastos y ahorro, con la variación frente al mes anterior y gráfica de la última semana. |
 | **Usuarios** | Buscar, crear, editar (incluida la contraseña) y eliminar usuarios. |
 | **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. |
-| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría y **reportes guardados** que se pueden desplegar y borrar. |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría (se pueden **borrar los gastos de una categoría**) y **reportes guardados** que se pueden desplegar y borrar. |
 | **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, **sacar dinero** cuando está cumplida, editar y eliminar). |
 
 ---
@@ -248,6 +248,7 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `GET` | `/reportes/resumen` | Totales propios. Acepta `?dias=N`. |
 | `GET` | `/reportes/serie` | Ingresos y gastos propios agrupados (mismos parámetros que `/admin/serie`). |
 | `GET` | `/reportes/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`. |
+| `DELETE` | `/reportes/gastos-categoria/:id` | Borra los gastos propios de esa categoría (en los últimos `?dias=N`, si se indica); el dinero vuelve al saldo. Los abonos a metas no se borran aquí: se sacan desde Metas. |
 | `GET` | `/reportes/guardados` | Reportes guardados propios. |
 | `POST` | `/reportes/guardados` | Guarda un reporte con sus datos. |
 | `DELETE` | `/reportes/guardados/:id` | Elimina un reporte propio. |
@@ -263,6 +264,7 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `GET` | `/admin/resumen` | Número de usuarios y totales propios con variación mensual. Acepta `?dias=N`. |
 | `GET` | `/admin/serie` | Ingresos y gastos propios agrupados: `?dias=7`, `?dias=30&agrupar=semana` o `?meses=6`. |
 | `GET` | `/admin/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`. |
+| `DELETE` | `/admin/gastos-categoria/:id` | Borra los gastos propios de esa categoría (en los últimos `?dias=N`, si se indica); el dinero vuelve al saldo. Los abonos a metas no se borran aquí: se sacan desde Metas. |
 | `GET` | `/admin/transacciones` | Últimas transacciones propias. Acepta `?limite=N`. |
 | `GET` | `/admin/usuarios` | Lista de usuarios. |
 | `POST` | `/admin/usuarios` | Crea un usuario. |
