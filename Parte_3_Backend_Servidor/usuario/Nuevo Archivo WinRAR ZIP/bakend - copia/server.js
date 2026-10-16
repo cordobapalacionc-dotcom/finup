@@ -235,6 +235,16 @@ app.post('/api/metas', (req, res) => {
     }
 });
 
+// Suma dinero al ahorro de una meta propia (sirve igual para usuarios y administrador)
+app.post('/api/metas/:id/abonar', (req, res) => {
+    const monto = Number(req.body.monto);
+    if (!(monto > 0)) return res.status(400).json({ error: "El monto a abonar debe ser mayor que 0" });
+    const result = prepare('UPDATE metas SET monto_actual = monto_actual + ? WHERE id = ? AND usuario_id = ?')
+        .run(monto, req.params.id, req.usuario.id);
+    if (result.changes === 0) return noEncontrado(res);
+    res.json({ mensaje: "Abono registrado", meta: prepare('SELECT * FROM metas WHERE id = ?').get(req.params.id) });
+});
+
 app.delete('/api/metas/:id', (req, res) => {
     const result = prepare('DELETE FROM metas WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
     if (result.changes === 0) return noEncontrado(res);
@@ -323,41 +333,43 @@ const SUMAS = `
     IFNULL(SUM(CASE WHEN tipo = 'ingreso' THEN monto END), 0) AS ingresos,
     IFNULL(SUM(CASE WHEN tipo = 'gasto' THEN monto END), 0) AS gastos`;
 
-// Filtro opcional ?dias=N sobre transacciones
+// El dinero que ve el administrador es solo el suyo: cada cuenta ve únicamente sus movimientos.
+// Filtro por el usuario que consulta y, opcionalmente, por los últimos ?dias=N
 const filtroDias = (req) => {
     const dias = parseInt(req.query.dias, 10);
     return dias > 0
-        ? { where: `WHERE date(fecha) > date('now','localtime', ?)`, params: [`-${dias} days`] }
-        : { where: '', params: [] };
+        ? { where: `WHERE usuario_id = ? AND date(fecha) > date('now','localtime', ?)`, params: [req.usuario.id, `-${dias} days`] }
+        : { where: 'WHERE usuario_id = ?', params: [req.usuario.id] };
 };
 
 // Variación en % de este mes frente al anterior (null si el mes anterior fue 0)
 const variacion = (actual, anterior) => (anterior ? Math.round(((actual - anterior) / anterior) * 100) : null);
 
-app.get('/api/admin/resumen', (req, res) => {
+app.get(['/api/admin/resumen', '/api/reportes/resumen'], (req, res) => {
     const f = filtroDias(req);
     const totales = prepare(`SELECT ${SUMAS}, COUNT(*) AS transacciones FROM transacciones ${f.where}`).get(...f.params);
     const usuarios = prepare(`SELECT COUNT(*) AS total, IFNULL(SUM(estado = 'activo'), 0) AS conectados FROM usuarios`).get();
-    const metas = prepare(`SELECT COUNT(*) AS total, IFNULL(SUM(monto_actual >= monto_objetivo), 0) AS cumplidas FROM metas`).get();
+    const metas = prepare(`SELECT COUNT(*) AS total, IFNULL(SUM(monto_actual >= monto_objetivo), 0) AS cumplidas FROM metas WHERE usuario_id = ?`).get(req.usuario.id);
 
     const mes = (desplazamiento) => prepare(`
         SELECT ${SUMAS} FROM transacciones
-        WHERE strftime('%Y-%m', fecha) = strftime('%Y-%m', 'now', 'localtime', ?)`).get(`${desplazamiento} months`);
+        WHERE usuario_id = ? AND strftime('%Y-%m', fecha) = strftime('%Y-%m', 'now', 'localtime', ?)`).get(req.usuario.id, `${desplazamiento} months`);
     const registros = (desplazamiento) => prepare(`
         SELECT COUNT(*) AS n FROM usuarios
         WHERE strftime('%Y-%m', fecha_registro) = strftime('%Y-%m', 'now', 'localtime', ?)`).get(`${desplazamiento} months`).n;
     const actual = mes(0), anterior = mes(-1);
 
+    const esAdmin = req.usuario.rol === 'admin';
     res.json({
-        usuarios: usuarios.total,
-        usuarios_conectados: usuarios.conectados,
+        usuarios: esAdmin ? usuarios.total : null,
+        usuarios_conectados: esAdmin ? usuarios.conectados : null,
         ingresos: totales.ingresos,
         gastos: totales.gastos,
         transacciones: totales.transacciones,
         metas: metas.total,
         metas_cumplidas: metas.cumplidas,
         tendencia: {
-            usuarios: variacion(registros(0), registros(-1)),
+            usuarios: esAdmin ? variacion(registros(0), registros(-1)) : null,
             ingresos: variacion(actual.ingresos, anterior.ingresos),
             gastos: variacion(actual.gastos, anterior.gastos),
             ahorro: variacion(actual.ingresos - actual.gastos, anterior.ingresos - anterior.gastos)
@@ -370,7 +382,7 @@ const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const fechaLocal = (d) => d.toLocaleDateString('sv-SE'); // YYYY-MM-DD
 
-app.get('/api/admin/serie', (req, res) => {
+app.get(['/api/admin/serie', '/api/reportes/serie'], (req, res) => {
     const hoy = new Date();
     const meses = Math.min(parseInt(req.query.meses, 10) || 0, 24);
     const dias = Math.min(parseInt(req.query.dias, 10) || 7, 366);
@@ -382,7 +394,7 @@ app.get('/api/admin/serie', (req, res) => {
 
     const porDia = new Map(prepare(`
         SELECT date(fecha) AS dia, ${SUMAS} FROM transacciones
-        WHERE date(fecha) >= ? GROUP BY dia`).all(fechaLocal(inicio)).map((f) => [f.dia, f]));
+        WHERE usuario_id = ? AND date(fecha) >= ? GROUP BY dia`).all(req.usuario.id, fechaLocal(inicio)).map((f) => [f.dia, f]));
 
     const grupos = [];
     for (let d = new Date(inicio), i = 0; d <= hoy; d.setDate(d.getDate() + 1), i++) {
@@ -405,15 +417,16 @@ app.get('/api/admin/serie', (req, res) => {
     res.json(grupos.map(({ label, ingresos, gastos }) => ({ label, ingresos, gastos })));
 });
 
-app.get('/api/admin/gastos-categoria', (req, res) => {
-    const f = filtroDias(req);
-    const condicion = f.where ? `AND date(t.fecha) > date('now','localtime', ?)` : '';
+app.get(['/api/admin/gastos-categoria', '/api/reportes/gastos-categoria'], (req, res) => {
+    const dias = parseInt(req.query.dias, 10);
+    const condicionDias = dias > 0 ? `AND date(t.fecha) > date('now','localtime', ?)` : '';
+    const params = dias > 0 ? [req.usuario.id, `-${dias} days`] : [req.usuario.id];
     res.json(prepare(`
         SELECT c.id, c.nombre, IFNULL(SUM(t.monto), 0) AS monto
         FROM categorias c
-        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' ${condicion}
+        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' AND t.usuario_id = ? ${condicionDias}
         WHERE c.tipo = 'gasto'
-        GROUP BY c.id ORDER BY monto DESC`).all(...f.params));
+        GROUP BY c.id ORDER BY monto DESC`).all(...params));
 });
 
 app.get('/api/admin/transacciones', (req, res) => {
@@ -423,7 +436,8 @@ app.get('/api/admin/transacciones', (req, res) => {
         FROM transacciones t
         JOIN usuarios u ON u.id = t.usuario_id
         JOIN categorias c ON c.id = t.categoria_id
-        ORDER BY t.fecha DESC, t.id DESC LIMIT ?`).all(limite));
+        WHERE t.usuario_id = ?
+        ORDER BY t.fecha DESC, t.id DESC LIMIT ?`).all(req.usuario.id, limite));
 });
 
 // Usuarios
@@ -477,65 +491,65 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
     res.json({ mensaje: "Usuario eliminado" });
 });
 
-// Metas de todos los usuarios
+// Metas del propio administrador (las de los usuarios solo las ve cada usuario)
 app.get('/api/admin/metas', (req, res) => {
-    res.json(prepare(`
-        SELECT m.*, u.nombre AS usuario FROM metas m JOIN usuarios u ON u.id = m.usuario_id
-        ORDER BY m.fecha_limite`).all());
+    res.json(prepare('SELECT * FROM metas WHERE usuario_id = ? ORDER BY fecha_limite').all(req.usuario.id));
 });
 
 app.post('/api/admin/metas', (req, res) => {
-    const { usuario_id, nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
-    if (!usuario_id || !nombre || !(Number(monto_objetivo) > 0)) {
-        return res.status(400).json({ error: "Usuario, nombre y un monto objetivo mayor que 0 son obligatorios" });
+    const { nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
+    if (!nombre || !(Number(monto_objetivo) > 0)) {
+        return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
     }
     const result = prepare(`INSERT INTO metas (usuario_id, nombre, monto_objetivo, monto_actual, fecha_limite) VALUES (?, ?, ?, ?, ?)`)
-        .run(usuario_id, nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || new Date().toISOString().slice(0, 10));
+        .run(req.usuario.id, nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || new Date().toISOString().slice(0, 10));
     res.status(201).json({ mensaje: "Meta creada", id: Number(result.lastInsertRowid) });
 });
 
 app.put('/api/admin/metas/:id', (req, res) => {
     const { nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
     if (!nombre || !(Number(monto_objetivo) > 0)) return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
-    const result = prepare(`UPDATE metas SET nombre = ?, monto_objetivo = ?, monto_actual = ?, fecha_limite = COALESCE(?, fecha_limite) WHERE id = ?`)
-        .run(nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || null, req.params.id);
+    const result = prepare(`UPDATE metas SET nombre = ?, monto_objetivo = ?, monto_actual = ?, fecha_limite = COALESCE(?, fecha_limite) WHERE id = ? AND usuario_id = ?`)
+        .run(nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || null, req.params.id, req.usuario.id);
     if (result.changes === 0) return noEncontrado(res);
     res.json({ mensaje: "Meta actualizada" });
 });
 
 app.delete('/api/admin/metas/:id', (req, res) => {
-    const result = prepare('DELETE FROM metas WHERE id = ?').run(req.params.id);
+    const result = prepare('DELETE FROM metas WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
     if (result.changes === 0) return noEncontrado(res);
     res.json({ mensaje: "Meta eliminada" });
 });
 
-// Presupuestos de los usuarios sumados por categoría, con lo gastado en el mes ?mes=YYYY-MM
+// Presupuestos del administrador por categoría, con lo que él gastó en el mes ?mes=YYYY-MM
 app.get('/api/admin/presupuestos', (req, res) => {
     const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : fechaLocal(new Date()).slice(0, 7);
+    const id = req.usuario.id;
     res.json(prepare(`
         SELECT c.id, c.nombre,
             IFNULL((SELECT SUM(CASE WHEN p.periodo = 'semanal' THEN p.monto_limite * 4 ELSE p.monto_limite END)
-                    FROM presupuestos p WHERE p.categoria_id = c.id), 0) AS asignado,
-            IFNULL((SELECT COUNT(DISTINCT p.usuario_id) FROM presupuestos p WHERE p.categoria_id = c.id), 0) AS usuarios,
+                    FROM presupuestos p WHERE p.categoria_id = c.id AND p.usuario_id = ?), 0) AS asignado,
             IFNULL((SELECT SUM(t.monto) FROM transacciones t
-                    WHERE t.categoria_id = c.id AND t.tipo = 'gasto' AND strftime('%Y-%m', t.fecha) = ?), 0) AS gastado
-        FROM categorias c WHERE c.tipo = 'gasto' ORDER BY c.id`).all(mes));
+                    WHERE t.categoria_id = c.id AND t.tipo = 'gasto' AND t.usuario_id = ?
+                      AND strftime('%Y-%m', t.fecha) = ?), 0) AS gastado
+        FROM categorias c WHERE c.tipo = 'gasto' ORDER BY c.id`).all(id, id, mes));
 });
 
-// Reportes generados por los administradores
+// Reportes guardados: cada cuenta (usuario o administrador) solo ve y borra los suyos
 const leerDatos = (texto) => {
     try { return texto ? JSON.parse(texto) : null; } catch { return null; }
 };
 
-app.get('/api/admin/reportes', (req, res) => {
+app.get(['/api/admin/reportes', '/api/reportes/guardados'], (req, res) => {
     const filas = prepare(`
         SELECT r.id, r.tipo, r.fecha_generado, r.datos, u.nombre AS usuario
         FROM reportes r JOIN usuarios u ON u.id = r.usuario_id
-        ORDER BY r.fecha_generado DESC, r.id DESC LIMIT 20`).all();
+        WHERE r.usuario_id = ?
+        ORDER BY r.fecha_generado DESC, r.id DESC LIMIT 20`).all(req.usuario.id);
     res.json(filas.map((r) => ({ ...r, datos: leerDatos(r.datos) })));
 });
 
-app.post('/api/admin/reportes', (req, res) => {
+app.post(['/api/admin/reportes', '/api/reportes/guardados'], (req, res) => {
     const tipo = String(req.body.tipo || '').trim().slice(0, 50);
     if (!tipo) return res.status(400).json({ error: "El tipo de reporte es obligatorio" });
     const datos = req.body.datos ? JSON.stringify(req.body.datos) : null;
@@ -544,14 +558,14 @@ app.post('/api/admin/reportes', (req, res) => {
     res.status(201).json({ mensaje: "Reporte registrado", id: Number(result.lastInsertRowid) });
 });
 
-app.delete('/api/admin/reportes/:id', (req, res) => {
-    const result = prepare('DELETE FROM reportes WHERE id = ?').run(req.params.id);
+app.delete(['/api/admin/reportes/:id', '/api/reportes/guardados/:id'], (req, res) => {
+    const result = prepare('DELETE FROM reportes WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
     if (result.changes === 0) return noEncontrado(res);
     res.json({ mensaje: "Reporte eliminado" });
 });
 
-app.delete('/api/admin/reportes', (req, res) => {
-    const result = prepare('DELETE FROM reportes').run();
+app.delete(['/api/admin/reportes', '/api/reportes/guardados'], (req, res) => {
+    const result = prepare('DELETE FROM reportes WHERE usuario_id = ?').run(req.usuario.id);
     res.json({ mensaje: "Reportes eliminados", eliminados: Number(result.changes) });
 });
 

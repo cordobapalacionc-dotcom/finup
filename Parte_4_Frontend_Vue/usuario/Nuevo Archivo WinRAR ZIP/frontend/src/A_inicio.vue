@@ -116,9 +116,9 @@ const statsCards = computed(() => {
   return [
     tarjeta('Total Usuarios', '👥', r.usuarios.toLocaleString('es-CO'), r.tendencia.usuarios, true,
       { nota: `${r.usuarios_conectados} conectado(s) ahora` }),
-    tarjeta('Ingresos Totales', '💰', moneda(r.ingresos), r.tendencia.ingresos),
-    tarjeta('Gastos Totales', '💸', moneda(r.gastos), r.tendencia.gastos, false),
-    tarjeta('Ahorro Global', '📈', moneda(r.ingresos - r.gastos), r.tendencia.ahorro, true, { isSaving: true }),
+    tarjeta('Tus Ingresos', '💰', moneda(r.ingresos), r.tendencia.ingresos),
+    tarjeta('Tus Gastos', '💸', moneda(r.gastos), r.tendencia.gastos, false),
+    tarjeta('Tu Ahorro', '📈', moneda(r.ingresos - r.gastos), r.tendencia.ahorro, true, { isSaving: true }),
   ];
 });
 

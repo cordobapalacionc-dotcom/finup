@@ -26,7 +26,7 @@
     <!-- Contenido Principal -->
     <div class="contenido">
       <h1>Finanzas</h1>
-      <p class="subtitulo">Gestión de ingresos y gastos global</p>
+      <p class="subtitulo">Tus ingresos y gastos</p>
 
       <!-- Cards de Resumen -->
       <div class="cards">
@@ -78,11 +78,10 @@
 
       <!-- Tabla de Transacciones -->
       <div class="tabla">
-        <h3>📋 Transacciones Recientes (Todos los usuarios)</h3>
+        <h3>📋 Tus transacciones recientes</h3>
         <table>
           <thead>
             <tr>
-              <th>Usuario</th>
               <th>Tipo</th>
               <th>Categoría</th>
               <th>Monto</th>
@@ -91,14 +90,13 @@
           </thead>
           <tbody>
             <tr v-for="t in transacciones" :key="t.id">
-              <td>{{ t.usuario }}</td>
               <td :class="t.tipo === 'ingreso' ? 'positivo' : 'negativo'">{{ t.tipo === 'ingreso' ? 'Ingreso' : 'Gasto' }}</td>
               <td>{{ t.categoria }}</td>
               <td>{{ moneda(t.monto) }}</td>
               <td>{{ fechaCorta(t.fecha) }}</td>
             </tr>
             <tr v-if="transacciones.length === 0">
-              <td colspan="5" style="text-align: center; padding: 20px;">
+              <td colspan="4" style="text-align: center; padding: 20px;">
                 {{ error || 'Todavía no hay transacciones registradas.' }}
               </td>
             </tr>

@@ -256,6 +256,7 @@ onMounted(async () => {
         <router-link to="/inicio" class="active">Página Principal</router-link>
         <router-link to="/gastos">Gastos e Ingresos</router-link>
         <router-link to="/metas">Metas</router-link>
+        <router-link to="/reportes">Reportes</router-link>
         <router-link to="/configuracion">Configuración</router-link>
         
       </nav>

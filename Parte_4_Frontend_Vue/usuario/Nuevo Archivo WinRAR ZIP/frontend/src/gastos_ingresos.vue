@@ -9,6 +9,7 @@
         <router-link to="/inicio">Página Principal</router-link>
         <router-link to="/gastos" class="active">Gastos e Ingresos</router-link>
         <router-link to="/metas">Metas</router-link>
+        <router-link to="/reportes">Reportes</router-link>
         <router-link to="/configuracion">Configuración</router-link>
       </nav>
       

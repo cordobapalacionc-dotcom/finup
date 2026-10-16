@@ -6,6 +6,7 @@ import Inicio from '../inicio.vue'
 import Gastos from '../gastos_ingresos.vue'
 import Configuracion from '../configuracion.vue'
 import Metas from '../metas.vue'
+import Reportes from '../reportes.vue'
 
 // Vistas de Administrador
 import A_Inicio from '../A_inicio.vue'
@@ -53,6 +54,12 @@ const router = createRouter({
       path: '/metas',
       name: 'metas',
       component: Metas,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/reportes',
+      name: 'reportes',
+      component: Reportes,
       meta: { requiresAuth: true }
     },
     {

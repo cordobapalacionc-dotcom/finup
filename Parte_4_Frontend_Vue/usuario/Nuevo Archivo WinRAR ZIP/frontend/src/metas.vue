@@ -7,6 +7,7 @@
         <router-link to="/inicio">Página Principal</router-link>
         <router-link to="/gastos">Gastos e Ingresos</router-link>
         <router-link to="/metas" class="active">Metas</router-link>
+        <router-link to="/reportes">Reportes</router-link>
         <router-link to="/configuracion">Configuración</router-link>
       </nav>
 
@@ -50,6 +51,7 @@
               {{ calcularPorcentaje(meta) >= 100 ? '¡Logrado!' : 'En progreso' }}
             </div>
             <div class="actions">
+              <button v-if="calcularPorcentaje(meta) < 100" @click="abrirModalAbono(index)" class="btn-abonar" title="Abonar dinero a esta meta">💰 Abonar</button>
               <button @click="abrirModalMeta(index)" class="btn-mini">✏️</button>
               <button @click="eliminarMeta(index)" class="btn-icon-delete">🗑️</button>
             </div>
@@ -134,6 +136,19 @@
           </div>
         </div>
 
+        <div v-if="modal.tipo === 'abono'" class="abono-contenido">
+          <p class="abono-meta">✨ {{ metaAbono?.nombre }}</p>
+          <p class="abono-detalle">
+            Llevas <b>${{ (metaAbono?.ahorro || 0).toLocaleString() }}</b> de ${{ (metaAbono?.monto || 0).toLocaleString() }}.
+            Te faltan <b>${{ faltanteAbono.toLocaleString() }}</b>.
+          </p>
+          <div class="input-group">
+            <label>¿Cuánto quieres abonar? ($)</label>
+            <input v-model.number="montoAbono" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarAbono">
+          </div>
+          <button type="button" class="btn-completar" @click="montoAbono = faltanteAbono">Completar la meta (${{ faltanteAbono.toLocaleString() }})</button>
+        </div>
+
         <div v-if="modal.tipo === 'presupuesto'">
           <div class="input-group">
             <label>Categoría</label>
@@ -153,7 +168,7 @@
 
         <div class="modal-actions">
           <button @click="cerrarModal" class="btn-cancel">Cancelar</button>
-          <button @click="modal.tipo === 'meta' ? guardarMeta() : guardarPresupuesto()" class="btn-save">Guardar</button>
+          <button @click="modal.tipo === 'meta' ? guardarMeta() : (modal.tipo === 'abono' ? guardarAbono() : guardarPresupuesto())" class="btn-save">{{ modal.tipo === 'abono' ? 'Abonar' : 'Guardar' }}</button>
         </div>
       </div>
     </div>
@@ -298,6 +313,32 @@ const abrirModalPresupuesto = (index = null) => {
   }
 };
 
+// --- ABONAR A UNA META ---
+const metaAbono = ref(null);
+const montoAbono = ref(null);
+const faltanteAbono = computed(() => metaAbono.value ? Math.max(metaAbono.value.monto - (metaAbono.value.ahorro || 0), 0) : 0);
+
+const abrirModalAbono = (index) => {
+  metaAbono.value = metas.value[index];
+  montoAbono.value = null;
+  modal.value = { activo: true, tipo: 'abono', titulo: '💰 Abonar a la meta', editandoIndex: null };
+};
+
+const guardarAbono = async () => {
+  if (!metaAbono.value || !(montoAbono.value > 0)) return;
+  try {
+    const res = await fetch(`${API_URL}/metas/${metaAbono.value.id}/abonar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monto: Number(montoAbono.value) })
+    });
+    if (res.ok) {
+      await cargarDatos();
+      cerrarModal();
+    }
+  } catch (e) { console.error(e); }
+};
+
 const cerrarModal = () => { modal.value.activo = false; };
 
 const cerrarSesion = async () => {
@@ -422,4 +463,34 @@ onMounted(() => {
   border-color: #2dbb73;
 }
 
+</style>
+
+<style scoped>
+/* --- Abonar a una meta --- */
+.btn-abonar {
+  background: #2dbb73;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-abonar:hover { background: #1a8a4a; }
+.abono-meta { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+.abono-detalle { font-size: 14px; color: #5778a4; margin: 0 0 16px; }
+.btn-completar {
+  background: none;
+  border: 1px dashed #2dbb73;
+  color: #1a8a4a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-completar:hover { background: rgba(45, 187, 115, 0.08); }
 </style>

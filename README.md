@@ -1,6 +1,6 @@
 # 💰 FinUp — Finanzas Personales
 
-Aplicación web para llevar tus finanzas personales: registra ingresos y gastos, define metas de ahorro y presupuestos, controla tus pagos recurrentes y consulta todo en gráficas. Incluye un **panel de administración** para gestionar usuarios y ver las estadísticas globales.
+Aplicación web para llevar tus finanzas personales: registra ingresos y gastos, define metas de ahorro y presupuestos, controla tus pagos recurrentes y consulta todo en gráficas. Incluye un **panel de administración** para gestionar usuarios. Cada cuenta, también la del administrador, ve **solo su propio dinero**.
 
 ![Vue](https://img.shields.io/badge/Vue-3.5-42b883?logo=vuedotjs&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
@@ -33,7 +33,8 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 |---|---|
 | **Página principal** | Resumen de ingresos, gastos y saldo, metas activas y pagos recurrentes con su progreso. |
 | **Gastos e Ingresos** | Registrar, editar y eliminar movimientos por categoría, con gráfica semanal. |
-| **Metas** | Crear metas de ahorro con fecha límite y presupuestos mensuales o semanales por categoría. |
+| **Metas** | Crear metas de ahorro, **abonarles dinero** (o completarlas de un clic) y definir presupuestos por categoría. |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gráfica, gasto por categoría y reportes guardados que se pueden desplegar y borrar. |
 | **Pagos recurrentes** | Programar pagos (luz, arriendo, etc.) y registrar abonos hasta completarlos. |
 | **Configuración** | Cambiar nombre, correo y contraseña, y elegir **tema claro u oscuro**. |
 
@@ -41,11 +42,11 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 
 | Sección | Qué permite |
 |---|---|
-| **Inicio** | Total de usuarios, ingresos, gastos y ahorro global, con su variación frente al mes anterior y gráfica de la última semana. |
+| **Inicio** | Total de usuarios y sus propios ingresos, gastos y ahorro, con la variación frente al mes anterior y gráfica de la última semana. |
 | **Usuarios** | Buscar, crear, editar (incluida la contraseña) y eliminar usuarios. |
-| **Finanzas** | Totales globales, evolución de los últimos 6 meses y transacciones de todos los usuarios. |
-| **Reportes** | Estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría y **reportes guardados** que se pueden desplegar y borrar. |
-| **Metas** | Presupuestos de los usuarios por categoría frente a lo gastado en el mes, y gestión de las metas de todos. |
+| **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría y **reportes guardados** que se pueden desplegar y borrar. |
+| **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, editar y eliminar). |
 
 ---
 
@@ -85,7 +86,7 @@ finup/
 │           ├── tema.js              # Tema claro / oscuro
 │           ├── categorias.js        # Categorías compartidas por los formularios
 │           ├── router/index.js      # Rutas y protección por rol
-│           ├── login.vue, inicio.vue, gastos_ingresos.vue, metas.vue, configuracion.vue
+│           ├── login.vue, inicio.vue, gastos_ingresos.vue, metas.vue, reportes.vue, configuracion.vue
 │           └── A_inicio.vue, A_usuarios.vue, A_finanzas.vue, A_Reportes.vue, A_metas.vue   # Panel de administración
 │
 ├── Parte_1_Interfaz_Usuario/        # Versión antigua en HTML (ver Limitaciones)
@@ -222,6 +223,7 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `DELETE` | `/movimientos/:id` | Elimina un movimiento. |
 | `GET` | `/metas/:usuario_id` | Lista de metas. |
 | `POST` | `/metas` | Crea una meta, o la edita si se envía `id`. |
+| `POST` | `/metas/:id/abonar` | Suma dinero (`monto`) al ahorro de una meta propia. También lo usa el administrador. |
 | `DELETE` | `/metas/:id` | Elimina una meta. |
 | `GET` | `/presupuestos/:usuario_id` | Lista de presupuestos. |
 | `POST` | `/presupuestos` | Crea un presupuesto, o lo edita si se envía `id`. |
@@ -235,27 +237,42 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 </details>
 
 <details>
+<summary><b>Reportes</b> (cualquier usuario, con sus propios datos)</summary>
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/reportes/resumen` | Totales propios. Acepta `?dias=N`. |
+| `GET` | `/reportes/serie` | Ingresos y gastos propios agrupados (mismos parámetros que `/admin/serie`). |
+| `GET` | `/reportes/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`. |
+| `GET` | `/reportes/guardados` | Reportes guardados propios. |
+| `POST` | `/reportes/guardados` | Guarda un reporte con sus datos. |
+| `DELETE` | `/reportes/guardados/:id` | Elimina un reporte propio. |
+| `DELETE` | `/reportes/guardados` | Elimina todos los reportes propios. |
+
+</details>
+
+<details>
 <summary><b>Administrador</b> (solo rol <code>admin</code>)</summary>
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/admin/resumen` | Totales globales y variación mensual. Acepta `?dias=N`. |
-| `GET` | `/admin/serie` | Ingresos y gastos agrupados: `?dias=7`, `?dias=30&agrupar=semana` o `?meses=6`. |
-| `GET` | `/admin/gastos-categoria` | Gasto por categoría. Acepta `?dias=N`. |
-| `GET` | `/admin/transacciones` | Últimas transacciones de todos los usuarios. Acepta `?limite=N`. |
+| `GET` | `/admin/resumen` | Número de usuarios y totales propios con variación mensual. Acepta `?dias=N`. |
+| `GET` | `/admin/serie` | Ingresos y gastos propios agrupados: `?dias=7`, `?dias=30&agrupar=semana` o `?meses=6`. |
+| `GET` | `/admin/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`. |
+| `GET` | `/admin/transacciones` | Últimas transacciones propias. Acepta `?limite=N`. |
 | `GET` | `/admin/usuarios` | Lista de usuarios. |
 | `POST` | `/admin/usuarios` | Crea un usuario. |
 | `PUT` | `/admin/usuarios/:id` | Edita un usuario (rol y contraseña incluidos). |
 | `DELETE` | `/admin/usuarios/:id` | Elimina un usuario y todos sus datos. |
-| `GET` | `/admin/metas` | Metas de todos los usuarios. |
-| `POST` | `/admin/metas` | Crea una meta para un usuario. |
+| `GET` | `/admin/metas` | Metas propias. |
+| `POST` | `/admin/metas` | Crea una meta propia. |
 | `PUT` | `/admin/metas/:id` | Edita una meta. |
 | `DELETE` | `/admin/metas/:id` | Elimina una meta. |
-| `GET` | `/admin/presupuestos` | Presupuestos sumados por categoría y gastado en el mes. Acepta `?mes=AAAA-MM`. |
-| `GET` | `/admin/reportes` | Reportes guardados. |
+| `GET` | `/admin/presupuestos` | Presupuestos propios por categoría y gastado en el mes. Acepta `?mes=AAAA-MM`. |
+| `GET` | `/admin/reportes` | Reportes guardados propios. |
 | `POST` | `/admin/reportes` | Guarda un reporte con sus datos. |
-| `DELETE` | `/admin/reportes/:id` | Elimina un reporte. |
-| `DELETE` | `/admin/reportes` | Elimina todos los reportes. |
+| `DELETE` | `/admin/reportes/:id` | Elimina un reporte propio. |
+| `DELETE` | `/admin/reportes` | Elimina todos los reportes propios. |
 
 </details>
 
@@ -264,7 +281,7 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 ## 🔒 Seguridad
 
 - **Sesiones con token:** se generan al iniciar sesión, caducan a los 7 días y se invalidan al cerrar sesión. En la base solo se guarda su hash.
-- **Aislamiento de datos:** el servidor comprueba en cada petición quién es el usuario. Nadie puede ver, editar ni borrar los datos de otra persona.
+- **Aislamiento de datos:** el servidor comprueba en cada petición quién es el usuario. Nadie, ni siquiera el administrador, puede ver el dinero, las metas o los presupuestos de otra persona. El administrador solo gestiona las cuentas (crear, editar y eliminar usuarios).
 - **Control de rol en el servidor:** las rutas `/api/admin` rechazan a cualquier usuario que no sea administrador, aunque modifique su navegador.
 - **Contraseñas con `scrypt` y sal.** Las contraseñas antiguas en SHA-256 se actualizan solas al iniciar sesión.
 - **Protección del administrador:** no puede eliminar su propia cuenta ni quitarse el rol.

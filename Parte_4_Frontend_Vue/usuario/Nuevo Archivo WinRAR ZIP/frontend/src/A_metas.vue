@@ -25,7 +25,7 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="contenido">
       <h1>Metas</h1>
-      <p class="subtitulo">Presupuestos y metas financieras de los usuarios</p>
+      <p class="subtitulo">Tus presupuestos y metas financieras</p>
 
       <!-- SECCIÓN DE PRESUPUESTO -->
       <section class="presupuesto-section">
@@ -44,10 +44,9 @@
             <thead>
               <tr>
                 <th>Categoría</th>
-                <th>Presupuesto de los usuarios</th>
+                <th>Tu presupuesto</th>
                 <th>Gastado en el mes</th>
                 <th>Progreso</th>
-                <th>Usuarios con presupuesto</th>
               </tr>
             </thead>
             <tbody>
@@ -69,7 +68,6 @@
                   </div>
                   <span v-else>—</span>
                 </td>
-                <td>{{ cat.usuarios }}</td>
               </tr>
             </tbody>
           </table>
@@ -106,7 +104,7 @@
       <section class="metas-section">
         <div class="metas-header">
           <div>
-            <h2>Metas Financieras de los Usuarios</h2>
+            <h2>Tus Metas Financieras</h2>
             <p class="metas-resumen">{{ metasActivas.length }} meta(s) · {{ metasCumplidas }} cumplida(s)</p>
           </div>
           <button v-if="!mostrarForm" class="btn-agregar" @click="mostrarForm = true">+ Nueva Meta</button>
@@ -117,13 +115,6 @@
           <form v-if="mostrarForm" class="form-meta" @submit.prevent="agregarMeta">
             <h3>Crear nueva meta</h3>
             <div class="form-grid">
-              <label class="campo campo-ancho">
-                <span>Usuario</span>
-                <select v-model="nuevaMeta.usuario_id" required>
-                  <option :value="null" disabled>Selecciona un usuario</option>
-                  <option v-for="user in usuarios" :key="user.id" :value="user.id">{{ user.nombre }} ({{ user.correo }})</option>
-                </select>
-              </label>
               <label class="campo campo-ancho">
                 <span>Nombre de la meta</span>
                 <input v-model.trim="nuevaMeta.nombre" type="text" placeholder="Ej: viaje, moto, fondo de emergencia" required>
@@ -153,7 +144,6 @@
           <table>
             <thead>
               <tr>
-                <th>Usuario</th>
                 <th>Meta</th>
                 <th>Fecha límite</th>
                 <th>Progreso</th>
@@ -163,7 +153,6 @@
             </thead>
             <tbody>
               <tr v-for="meta in metasActivas" :key="meta.id">
-                <td>{{ meta.usuario }}</td>
                 <td>
                   <div class="meta-nombre">🎯 {{ meta.nombre }}</div>
                   <div class="meta-montos">{{ moneda(meta.monto_actual) }} de {{ moneda(meta.monto_objetivo) }}</div>
@@ -183,14 +172,15 @@
                   </span>
                 </td>
                 <td class="col-acciones">
+                  <button v-if="getMetaPorcentaje(meta) < 100" class="btn-abonar" @click="abrirAbono(meta)">💰 Abonar</button>
                   <button class="btn-editar" @click="abrirEditar(meta)">✏️ Editar</button>
                   <button class="btn-eliminar" @click="eliminarMeta(meta)">🗑️ Eliminar</button>
                 </td>
               </tr>
               <tr v-if="metasActivas.length === 0">
-                <td colspan="6" class="sin-metas">
+                <td colspan="5" class="sin-metas">
                   <div class="sin-metas-icono">🎯</div>
-                  Ningún usuario tiene metas todavía.
+                  Todavía no tienes metas.
                   <button v-if="!mostrarForm" class="btn-enlace" @click="mostrarForm = true">Crear la primera</button>
                 </td>
               </tr>
@@ -200,10 +190,30 @@
       </section>
     </main>
 
+    <!-- Modal Abonar -->
+    <div v-if="metaAbono" class="modal-overlay" @click.self="metaAbono = null">
+      <form class="modal-content" @submit.prevent="guardarAbono">
+        <h3>💰 Abonar a "{{ metaAbono.nombre }}"</h3>
+        <p class="abono-detalle">
+          Llevas <b>{{ moneda(metaAbono.monto_actual) }}</b> de {{ moneda(metaAbono.monto_objetivo) }}.
+          Te faltan <b>{{ moneda(faltanteAbono) }}</b>.
+        </p>
+        <label class="campo">
+          <span>Monto a abonar</span>
+          <input v-model.number="montoAbono" type="number" min="1" placeholder="Ej: 50000" required>
+        </label>
+        <button type="button" class="btn-completar" @click="montoAbono = faltanteAbono">Completar la meta ({{ moneda(faltanteAbono) }})</button>
+        <div class="form-acciones">
+          <button type="button" class="btn-secundario" @click="metaAbono = null">Cancelar</button>
+          <button type="submit" class="btn-agregar">Abonar</button>
+        </div>
+      </form>
+    </div>
+
     <!-- Modal Editar -->
     <div v-if="metaEditando" class="modal-overlay" @click.self="metaEditando = null">
       <form class="modal-content" @submit.prevent="confirmarEdicion">
-        <h3>Editar meta de {{ metaEditando.usuario }}</h3>
+        <h3>Editar meta</h3>
         <label class="campo"><span>Nombre</span><input v-model.trim="metaEditando.nombre" type="text" required></label>
         <label class="campo"><span>Monto objetivo</span><input v-model.number="metaEditando.monto_objetivo" type="number" min="1" required></label>
         <label class="campo"><span>Ahorro actual</span><input v-model.number="metaEditando.monto_actual" type="number" min="0"></label>
@@ -262,9 +272,8 @@ const metaEditando = ref(null);
 
 const presupuestos = ref([]);
 const metasActivas = ref([]);
-const usuarios = ref([]);
 
-const metaVacia = () => ({ usuario_id: null, nombre: '', monto_objetivo: null, monto_actual: null, fecha_limite: '' });
+const metaVacia = () => ({ nombre: '', monto_objetivo: null, monto_actual: null, fecha_limite: '' });
 const nuevaMeta = reactive(metaVacia());
 
 // --- CARGA DE DATOS ---
@@ -284,14 +293,7 @@ const cargarMetas = async () => {
   }
 };
 
-onMounted(async () => {
-  await Promise.all([cargarPresupuestos(), cargarMetas()]);
-  try {
-    usuarios.value = await api('/admin/usuarios');
-  } catch (e) {
-    console.error(e);
-  }
-});
+onMounted(() => Promise.all([cargarPresupuestos(), cargarMetas()]));
 
 // --- COMPUTED PROPERTIES (Lógica automática) ---
 const conPresupuesto = computed(() => presupuestos.value.filter(p => p.asignado > 0));
@@ -326,7 +328,7 @@ const getProgresoMetaClase = (meta) => {
 };
 
 const agregarMeta = async () => {
-  if (!nuevaMeta.usuario_id || !nuevaMeta.nombre || !(nuevaMeta.monto_objetivo > 0)) {
+  if (!nuevaMeta.nombre || !(nuevaMeta.monto_objetivo > 0)) {
     return;
   }
   try {
@@ -345,6 +347,27 @@ const cancelarMeta = () => {
 };
 
 const metasCumplidas = computed(() => metasActivas.value.filter(m => getMetaPorcentaje(m) >= 100).length);
+
+// --- ABONAR A UNA META ---
+const metaAbono = ref(null);
+const montoAbono = ref(null);
+const faltanteAbono = computed(() => metaAbono.value ? Math.max(metaAbono.value.monto_objetivo - metaAbono.value.monto_actual, 0) : 0);
+
+const abrirAbono = (meta) => {
+  metaAbono.value = meta;
+  montoAbono.value = null;
+};
+
+const guardarAbono = async () => {
+  if (!(montoAbono.value > 0)) return;
+  try {
+    await api(`/metas/${metaAbono.value.id}/abonar`, { method: 'POST', body: { monto: Number(montoAbono.value) } });
+    metaAbono.value = null;
+    await cargarMetas();
+  } catch (e) {
+    console.error(e);
+  }
+};
 
 const abrirEditar = (meta) => {
   metaEditando.value = { ...meta };
@@ -2548,4 +2571,28 @@ tr:hover {
   .form-grid { grid-template-columns: 1fr; }
   .campo-ancho { grid-column: span 1; }
 }
+</style>
+
+<style scoped>
+/* --- Abonar --- */
+.btn-abonar {
+  background: var(--primary-green);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.btn-abonar:hover { background: var(--primary-dark); }
+.abono-detalle { font-size: 14px; color: var(--gray-text); margin: 0; }
+.btn-completar {
+  background: none;
+  border: 1px dashed var(--primary-green);
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-completar:hover { background: rgba(45, 187, 115, 0.08); }
 </style>

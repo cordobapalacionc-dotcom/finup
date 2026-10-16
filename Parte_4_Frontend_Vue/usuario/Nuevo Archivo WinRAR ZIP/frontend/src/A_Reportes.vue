@@ -29,8 +29,8 @@
         <!-- HEADER -->
         <header class="reportes-header">
           <div>
-            <h1>Visualiza y analiza los datos financieros</h1>
-            <p>de los usuarios con reportes detallados</p>
+            <h1>Visualiza y analiza tus datos financieros</h1>
+            <p>con reportes detallados por periodo</p>
           </div>
           <div class="fecha-selector">
             <span>📅</span>
@@ -242,8 +242,8 @@ const stats = computed(() => {
   const balance = r.ingresos - r.gastos;
   const pctMetas = r.metas ? Math.round((r.metas_cumplidas / r.metas) * 100) : 0;
   return [
-    { titulo: 'Ingresos Totales', valor: moneda(r.ingresos), subtitulo: `${r.transacciones} movimiento(s)`, icono: '💰' },
-    { titulo: 'Gastos Totales', valor: moneda(r.gastos), icono: '💸' },
+    { titulo: 'Tus Ingresos', valor: moneda(r.ingresos), subtitulo: `${r.transacciones} movimiento(s)`, icono: '💰' },
+    { titulo: 'Tus Gastos', valor: moneda(r.gastos), icono: '💸' },
     { titulo: 'Balance', valor: (balance >= 0 ? '+' : '-') + moneda(Math.abs(balance)), icono: '⚖️' },
     { titulo: 'Metas Alcanzadas', valor: `${r.metas_cumplidas}/${r.metas}`, subtitulo: `${pctMetas}% completado`, clase: 'metas-card', icono: '🎯' },
   ];
