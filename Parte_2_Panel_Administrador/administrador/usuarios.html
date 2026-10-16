@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Usuarios - Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+       <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li><a href="principal.html">🏠 Inicio</a></li>
+            <li class="active"><a href="usuarios.html">👥 Usuarios</a></li>
+            <li><a href="finanzas.html">💰 Finanzas</a></li>
+            <li><a href="reportes.html">📊 Reportes</a></li>
+            <li><a href="metas.html">🎯 Metas</a></li>
+            <li><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <div class="contenido">
+        <div class="header">
+            <h1>Gestión de Usuarios</h1>
+            <button class="btn-agregar">+ Nuevo Usuario</button>
+        </div>
+        <div class="buscador">
+            <input type="text" placeholder="🔍 Buscar usuario por nombre o email...">
+        </div>
+        <div class="tabla">
+            <table>
+                <thead>
+                    <tr><th>Nombre</th><th>Email</th><th>Estado</th><th>Rol</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Carlos López</td><td>carlos@email.com</td><td><span class="activo">Activo</span></td><td>Admin</td><td><button class="btn-editar">Editar</button><button class="btn-eliminar">Eliminar</button></td></tr>
+                    <tr><td>María García</td><td>maria@email.com</td><td><span class="activo">Activo</span></td><td>Usuario</td><td><button class="btn-editar">Editar</button><button class="btn-eliminar">Eliminar</button></td></tr>
+                    <tr><td>Juan Pérez</td><td>juan@email.com</td><td><span class="inactivo">Inactivo</span></td><td>Usuario</td><td><button class="btn-editar">Editar</button><button class="btn-eliminar">Eliminar</button></td></tr>
+                    <tr><td>Ana Rodríguez</td><td>ana@email.com</td><td><span class="activo">Activo</span></td><td>Usuario</td><td><button class="btn-editar">Editar</button><button class="btn-eliminar">Eliminar</button></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+PARTE 1 — INTERFAZ DEL USUARIO
+
+Contiene las páginas del usuario de FinanzasApp: inicio, inicio de sesión, gastos e ingresos, metas y configuración.
+
+HTML = estructura de la pantalla. CSS = apariencia. JavaScript = comportamiento e interacción.
+
+Nota: estas páginas pueden depender de un backend y de rutas específicas. Revisa las direcciones de API en los archivos .js antes de ejecutarlas.

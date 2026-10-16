@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Configuración - Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li><a href="principal.html">🏠 Inicio</a></li>
+            <li><a href="usuarios.html">👥 Usuarios</a></li>
+            <li><a href="finanzas.html">💰 Finanzas</a></li>
+            <li><a href="reportes.html">📊 Reportes</a></li>
+            <li><a href="metas.html">🎯 Metas</a></li>
+            <li class="active"><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <div class="contenido">
+        <h1>Configuración del Sistema</h1>
+        <p class="subtitulo">Personaliza tu panel de administración</p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>👤 Perfil Administrador</h3>
+                <form>
+                    <input type="text" placeholder="Nombre" value="Administrador">
+                    <input type="email" placeholder="Email" value="admin@finanzas.com">
+                    <input type="password" placeholder="Nueva contraseña">
+                    <button type="submit" class="btn-guardar">Actualizar Perfil</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Configuración General</h3>
+                <form>
+                    <label>Moneda predeterminada</label>
+                    <select>
+                        <option>Peso Colombiano (COP)</option>
+                        <option>Dólar (USD)</option>
+                        <option>Euro (EUR)</option>
+                    </select>
+                    <label>Idioma</label>
+                    <select>
+                        <option>Español</option>
+                        <option>Inglés</option>
+                    </select>
+                    <button type="submit" class="btn-guardar">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

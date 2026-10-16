@@ -1,0 +1,84 @@
+
+:root {
+    --bg-body: #f0f4f8;
+    --bg-card: white;
+    --text-main: #1a202c;
+    --text-sub: #718096;
+}
+
+.dark-mode {
+    --bg-body: #1a202c;
+    --bg-card: #2d3748;
+    --text-main: #f7fafc;
+    --text-sub: #a0aec0;
+}
+
+body { margin: 0; background: var(--bg-body); transition: 0.3s; }
+
+.dashboard { display: flex; min-height: 100vh; font-family: 'Poppins', sans-serif; }
+
+.sidebar {
+    width: 250px;
+    background: #122326;
+    color: white;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+}
+
+.menu a {
+    display: block;
+    color: #a0aec0;
+    text-decoration: none;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+}
+
+.menu a.active {
+    background: rgba(45, 187, 115, 0.15);
+    border-left: 4px solid #2dbb73;
+    color: white;
+}
+
+.contenido { flex: 1; padding: 40px 60px; margin-left: 250px; }
+
+.card {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    color: var(--text-main);
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+.btn-save {
+    background: #2dbb73;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-logout { background: #e53e3e; color: white; border: none; padding: 10px; width: 100%; border-radius: 10px; cursor: pointer; }
+
+/* Estilo simple para el Switch */
+.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #2dbb73; }
+input:checked + .slider:before { transform: translateX(20px); }
+

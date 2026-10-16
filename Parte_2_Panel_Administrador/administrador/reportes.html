@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reportes - Panel Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="reportes.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+       <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li><a href="principal.html">🏠 Inicio</a></li>
+            <li><a href="usuarios.html">👥 Usuarios</a></li>
+            <li><a href="finanzas.html">💰 Finanzas</a></li>
+            <li class="active"><a href="reportes.html">📊 Reportes</a></li>
+            <li><a href="metas.html">🎯 Metas</a></li>
+            <li><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="contenido">
+        
+        <div class="reportes-container">
+            
+            <!-- HEADER -->
+            <div class="reportes-header">
+                <div>
+                    <h1>Visualiza y analiza los datos financieros</h1>
+                    <p>de los usuarios con reportes detallados</p>
+                </div>
+                <div class="fecha-selector">
+                    <span>📅</span>
+                    <select id="periodoSelector">
+                        <option value="30">Últimos 30 días</option>
+                        <option value="7">Últimos 7 días</option>
+                        <option value="90">Últimos 90 días</option>
+                        <option value="365">Último año</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- CARDS ESTADÍSTICAS -->
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <h3>💰 Ingresos Totales</h3>
+                    <div class="valor">$85,200</div>
+                    <div class="trend up">↑ 3.7%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>💸 Gastos Totales</h3>
+                    <div class="valor">$62,500</div>
+                    <div class="trend up">↑ 6.5%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>⚖️ Balance</h3>
+                    <div class="valor">+$22,700</div>
+                    <div class="trend up">↑ 12.5%</div>
+                </div>
+                <div class="stat-card metas-card">
+                    <h3>🎯 Metas Alcanzadas</h3>
+                    <div class="valor">12/15</div>
+                    <div class="subtitulo">80% completado</div>
+                </div>
+            </div>
+
+            <!-- GRÁFICO PRINCIPAL -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3>📊 Ingresos vs Gastos</h3>
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-color ingresos"></span> Ingresos</div>
+                        <div class="legend-item"><span class="legend-color gastos"></span> Gastos</div>
+                        <div class="legend-item"><span class="legend-color balance"></span> Balance</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-bars" id="chartBars">
+                        <!-- Las barras se generan con JavaScript -->
+                    </div>
+                    
+                    <div class="chart-annotation">
+                        <span>+$22,700</span> Balance neto del período
+                    </div>
+                </div>
+            </div>
+<!-- GRÁFICO CIRCULAR (DONA) - Ubicación después del gráfico de barras -->
+<div class="dona-section">
+    <div class="dona-header">
+        <h3>🥧 Distribución de Gastos por Categoría</h3>
+        <div class="dona-legend">
+            <div class="dona-legend-item"><span class="dona-color" style="background: #2dbb73;"></span> Alimentación</div>
+            <div class="dona-legend-item"><span class="dona-color" style="background: #3b82f6;"></span> Vivienda</div>
+            <div class="dona-legend-item"><span class="dona-color" style="background: #f59e0b;"></span> Transporte</div>
+            <div class="dona-legend-item"><span class="dona-color" style="background: #8b5cf6;"></span> Entretenimiento</div>
+            <div class="dona-legend-item"><span class="dona-color" style="background: #6b7280;"></span> Otros</div>
+        </div>
+    </div>
+
+    <div class="dona-container">
+        <!-- Gráfico SVG Dona -->
+        <div class="dona-grafico">
+            <svg viewBox="0 0 100 100" class="dona-svg">
+                <!-- Fondo -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="15"/>
+                <!-- Alimentación 28% -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#2dbb73" stroke-width="15"
+                        stroke-dasharray="251.2" stroke-dashoffset="180.86"
+                        transform="rotate(-90 50 50)"/>
+                <!-- Vivienda 9% -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="15"
+                        stroke-dasharray="251.2" stroke-dashoffset="228.59"
+                        transform="rotate(-90 50 50)"/>
+                <!-- Transporte 20% -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="15"
+                        stroke-dasharray="251.2" stroke-dashoffset="200.96"
+                        transform="rotate(-90 50 50)"/>
+                <!-- Entretenimiento 18% -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#8b5cf6" stroke-width="15"
+                        stroke-dasharray="251.2" stroke-dashoffset="205.98"
+                        transform="rotate(-90 50 50)"/>
+                <!-- Otros 14% -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#6b7280" stroke-width="15"
+                        stroke-dasharray="251.2" stroke-dashoffset="216.03"
+                        transform="rotate(-90 50 50)"/>
+            </svg>
+            <div class="dona-centro">
+                <div class="dona-total">$55,325</div>
+                <div class="dona-label">Total Gastos</div>
+            </div>
+        </div>
+
+        <!-- Lista de categorías -->
+        <div class="dona-lista">
+            <div class="dona-item">
+                <div class="dona-item-info">
+                    <div class="dona-item-color" style="background: #2dbb73;"></div>
+                    <span class="dona-item-nombre">Alimentación</span>
+                </div>
+                <div>
+                    <span class="dona-item-valor">$17,300</span>
+                    <span class="dona-item-porcentaje">(28%)</span>
+                </div>
+            </div>
+            <div class="dona-item">
+                <div class="dona-item-info">
+                    <div class="dona-item-color" style="background: #3b82f6;"></div>
+                    <span class="dona-item-nombre">Vivienda</span>
+                </div>
+                <div>
+                    <span class="dona-item-valor">$5,625</span>
+                    <span class="dona-item-porcentaje">(9%)</span>
+                </div>
+            </div>
+            <div class="dona-item">
+                <div class="dona-item-info">
+                    <div class="dona-item-color" style="background: #f59e0b;"></div>
+                    <span class="dona-item-nombre">Transporte</span>
+                </div>
+                <div>
+                    <span class="dona-item-valor">$12,400</span>
+                    <span class="dona-item-porcentaje">(20%)</span>
+                </div>
+            </div>
+            <div class="dona-item">
+                <div class="dona-item-info">
+                    <div class="dona-item-color" style="background: #8b5cf6;"></div>
+                    <span class="dona-item-nombre">Entretenimiento</span>
+                </div>
+                <div>
+                    <span class="dona-item-valor">$11,200</span>
+                    <span class="dona-item-porcentaje">(18%)</span>
+                </div>
+            </div>
+            <div class="dona-item">
+                <div class="dona-item-info">
+                    <div class="dona-item-color" style="background: #6b7280;"></div>
+                    <span class="dona-item-nombre">Otros</span>
+                </div>
+                <div>
+                    <span class="dona-item-valor">$8,800</span>
+                    <span class="dona-item-porcentaje">(14%)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- GRID DE DOS COLUMNAS -->
+            <div class="reportes-grid">
+                
+                <!-- REPORTES RECIENTES -->
+                <div class="recientes-section">
+                    <h3>📄 Reportes Recientes</h3>
+                    <div class="recientes-list">
+                        <div class="reporte-item">
+                            <div class="reporte-info">
+                                <h4>Reporte Mensual</h4>
+                                <p>01/04/2024</p>
+                            </div>
+                            <div class="reporte-icono">📊</div>
+                        </div>
+                        <div class="reporte-item">
+                            <div class="reporte-info">
+                                <h4>Análisis de Ingresos</h4>
+                                <p>28/03/2024</p>
+                            </div>
+                            <div class="reporte-icono">📈</div>
+                        </div>
+                        <div class="reporte-item">
+                            <div class="reporte-info">
+                                <h4>Desglose de Gastos</h4>
+                                <p>22/03/2024</p>
+                            </div>
+                            <div class="reporte-icono">📉</div>
+                        </div>
+                        <div class="reporte-item">
+                            <div class="reporte-info">
+                                <h4>Objetivos Financieros</h4>
+                                <p>15/03/2024</p>
+                            </div>
+                            <div class="reporte-icono">🎯</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CATEGORÍAS DE GASTOS -->
+                <div class="categorias-section">
+                    <h3>📂 Categorías de Gastos</h3>
+                    <div class="categorias-list">
+                        <div class="categoria-item">
+                            <div class="categoria-info">
+                                <div class="categoria-icono comida">🍽️</div>
+                                <div class="categoria-texto">
+                                    <h4>Alimentación</h4>
+                                    <p>Gastos en comida y supermercado</p>
+                                </div>
+                            </div>
+                            <div class="categoria-monto">
+                                <div class="monto">$17,300</div>
+                                <div class="porcentaje">28%</div>
+                            </div>
+                        </div>
+                        <div class="categoria-progreso">
+                            <div class="progreso-bg">
+                                <div class="progreso-fill" style="width: 28%; background: #2dbb73;"></div>
+                            </div>
+                        </div>
+
+                        <div class="categoria-item">
+                            <div class="categoria-info">
+                                <div class="categoria-icono vivienda">🏠</div>
+                                <div class="categoria-texto">
+                                    <h4>Vivienda</h4>
+                                    <p>Alquiler, servicios, mantenimiento</p>
+                                </div>
+                            </div>
+                            <div class="categoria-monto">
+                                <div class="monto">$5,625</div>
+                                <div class="porcentaje">9%</div>
+                            </div>
+                        </div>
+                        <div class="categoria-progreso">
+                            <div class="progreso-bg">
+                                <div class="progreso-fill" style="width: 9%; background: #3b82f6;"></div>
+                            </div>
+                        </div>
+
+                        <div class="categoria-item">
+                            <div class="categoria-info">
+                                <div class="categoria-icono transporte">🚗</div>
+                                <div class="categoria-texto">
+                                    <h4>Transporte</h4>
+                                    <p>Combustible, mantenimiento, pasajes</p>
+                                </div>
+                            </div>
+                            <div class="categoria-monto">
+                                <div class="monto">$12,400</div>
+                                <div class="porcentaje">20%</div>
+                            </div>
+                        </div>
+                        <div class="categoria-progreso">
+                            <div class="progreso-bg">
+                                <div class="progreso-fill" style="width: 20%; background: #f59e0b;"></div>
+                            </div>
+                        </div>
+
+                        <div class="categoria-item">
+                            <div class="categoria-info">
+                                <div class="categoria-icono entretenimiento">🎬</div>
+                                <div class="categoria-texto">
+                                    <h4>Entretenimiento</h4>
+                                    <p>Cine, streaming, ocio</p>
+                                </div>
+                            </div>
+                            <div class="categoria-monto">
+                                <div class="monto">$11,200</div>
+                                <div class="porcentaje">18%</div>
+                            </div>
+                        </div>
+                        <div class="categoria-progreso">
+                            <div class="progreso-bg">
+                                <div class="progreso-fill" style="width: 18%; background: #8b5cf6;"></div>
+                            </div>
+                        </div>
+
+                        <div class="categoria-item">
+                            <div class="categoria-info">
+                                <div class="categoria-icono otros">📦</div>
+                                <div class="categoria-texto">
+                                    <h4>Otros</h4>
+                                    <p>Gastos varios no categorizados</p>
+                                </div>
+                            </div>
+                            <div class="categoria-monto">
+                                <div class="monto">$8,800</div>
+                                <div class="porcentaje">14%</div>
+                            </div>
+                        </div>
+                        <div class="categoria-progreso">
+                            <div class="progreso-bg">
+                                <div class="progreso-fill" style="width: 14%; background: #6b7280;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-ver-totales">
+                        <button onclick="verTotales()">Ver Totales</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Datos para el gráfico
+    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const ingresos = [3200, 2800, 3500, 3100, 4200, 3800, 2500];
+    const gastos = [2100, 1900, 2300, 2200, 3100, 2800, 1800];
+    const maxValor = 5000;
+
+    function generarGrafico() {
+        const container = document.getElementById('chartBars');
+        container.innerHTML = '';
+        
+        for (let i = 0; i < dias.length; i++) {
+            const alturaIngreso = (ingresos[i] / maxValor) * 250;
+            const alturaGasto = (gastos[i] / maxValor) * 250;
+            const balance = ingresos[i] - gastos[i];
+            
+            const barItem = document.createElement('div');
+            barItem.className = 'bar-item';
+            barItem.innerHTML = `
+                <div class="bar-wrapper">
+                    <div class="bar-ingreso" style="height: ${alturaIngreso}px"></div>
+                    <div class="bar-gasto" style="height: ${alturaGasto}px"></div>
+                </div>
+                <div class="bar-label">${dias[i]}</div>
+                <div class="bar-value">$${balance}</div>
+            `;
+            container.appendChild(barItem);
+        }
+    }
+
+    function verTotales() {
+        alert('Total de gastos por categoría:\n\n' +
+              '🍽️ Alimentación: $17,300\n' +
+              '🏠 Vivienda: $5,625\n' +
+              '🚗 Transporte: $12,400\n' +
+              '🎬 Entretenimiento: $11,200\n' +
+              '📦 Otros: $8,800\n\n' +
+              '💰 TOTAL: $55,325');
+    }
+
+    // Cambio de período
+    document.getElementById('periodoSelector').addEventListener('change', function() {
+        alert(`Mostrando datos de: ${this.options[this.selectedIndex].text}`);
+    });
+
+    // Generar gráfico al cargar
+    generarGrafico();
+</script>
+
+</body>
+</html>

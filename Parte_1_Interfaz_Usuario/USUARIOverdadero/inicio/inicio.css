@@ -1,0 +1,56 @@
+
+:root {
+    --bg-main: #f0f4f8;
+    --bg-card: #ffffff;
+    --text-main: #1a202c;
+    --sidebar-bg: #122326;
+    --border: #e2e8f0;
+}
+
+body.dark-mode {
+    --bg-main: #121212;
+    --bg-card: #1e1e1e;
+    --text-main: #f7fafc;
+    --sidebar-bg: #000000;
+    --border: #2d3748;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+
+.hidden { display: none !important; }
+
+/* RE-UTILIZACIÓN DE TUS ESTILOS */
+.dashboard-container { display: flex; min-height: 100vh; }
+
+.sidebar { width: 250px; background: var(--sidebar-bg); color: white; padding: 25px; display: flex; flex-direction: column; }
+.logo b { color: #2dbb73; }
+
+.menu a { display: block; color: #a0aec0; text-decoration: none; padding: 12px 15px; margin-bottom: 8px; border-radius: 12px; transition: 0.3s; }
+.menu a.active { color: white; background: rgba(45, 187, 115, 0.15); border-left: 4px solid #2dbb73; }
+
+.main-content { flex: 1; padding: 30px 50px; }
+.welcome-banner { background: var(--bg-card); padding: 30px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+
+.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.card { background: var(--bg-card); padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+.negative { color: #e53e3e !important; }
+.positive { color: #38a169 !important; }
+
+/* Estilos de Switch Modo Oscuro */
+.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #2dbb73; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Progress bars y Cards de pagos */
+.payment-card { display: flex; justify-content: space-between; padding: 15px; background: var(--bg-card); margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); }
+.progress-bar { background: #edf2f7; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; transition: width 0.5s; }
+
+/* Modales */
+.modal-overlay { position: fixed; top: 0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 100; }
+.modal-content { background: var(--bg-card); padding: 30px; border-radius: 20px; width: 400px; }

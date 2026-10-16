@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Metas y Presupuesto - Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="metas.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li><a href="principal.html">🏠 Inicio</a></li>
+            <li><a href="usuarios.html">👥 Usuarios</a></li>
+            <li><a href="finanzas.html">💰 Finanzas</a></li>
+            <li><a href="reportes.html">📊 Reportes</a></li>
+            <li class="active"><a href="metas.html">🎯 Metas</a></li>
+            <li><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="contenido">
+        <h1>Metas </h1>
+        <p class="subtitulo">Gestión de presupuestos y metas financieras de los usuarios</p>
+
+        <!-- SECCIÓN DE PRESUPUESTO -->
+
+        <div class="presupuesto-section">
+            <div class="presupuesto-header">
+                <h2>Presupuesto Mensual por Categoría</h2>
+                <div class="mes-selector">
+                    <label>📅 Seleccionar mes:</label>
+                    <select id="mesPresupuesto">
+                        <option value="Enero">Enero 2024</option>
+                        <option value="Febrero">Febrero 2024</option>
+                        <option value="Marzo">Marzo 2024</option>
+                        <option value="Abril">Abril 2024</option>
+                        <option value="Mayo">Mayo 2024</option>
+                        <option value="Junio" selected>Junio 2024</option>
+                        <option value="Julio">Julio 2024</option>
+                    </select>
+                    <button class="btn-aplicar-todos" onclick="aplicarPresupuestoATodos()">📋 Aplicar a todos</button>
+                </div>
+            </div>
+
+            <div class="presupuesto-tabla">
+                <table id="tablaPresupuesto">
+                    <thead>
+                        <tr>
+                            <th>Categoría</th>
+                            <th>Presupuesto Asignado</th>
+                            <th>Gastado Actual</th>
+                            <th>Progreso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-categoria="Comida">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-comida">🍽️</div> Alimentación</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-comida" value="500000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-comida">$320,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 64%"></div></div><span class="porcentaje-texto bajo">64%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Comida')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Servicios">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-servicios">💡</div> Servicios</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-servicios" value="300000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-servicios">$245,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar medio" style="width: 82%"></div></div><span class="porcentaje-texto medio">82%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Servicios')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Transporte">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-transporte">🚗</div> Transporte</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-transporte" value="200000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-transporte">$230,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar alto" style="width: 115%"></div></div><span class="porcentaje-texto alto">115%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Transporte')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Entretenimiento">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-entretenimiento">🎬</div> Entretenimiento</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-entretenimiento" value="150000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-entretenimiento">$98,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 65%"></div></div><span class="porcentaje-texto bajo">65%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Entretenimiento')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Salud">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-salud">🏥</div> Salud</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-salud" value="250000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-salud">$180,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 72%"></div></div><span class="porcentaje-texto bajo">72%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Salud')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Educacion">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-educacion">📚</div> Educación</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-educacion" value="300000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-educacion">$280,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar medio" style="width: 93%"></div></div><span class="porcentaje-texto medio">93%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Educacion')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Metas">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-metas">🎯</div> Metas de Ahorro</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-metas" value="400000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-metas">$350,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 87%"></div></div><span class="porcentaje-texto bajo">87%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Metas')">Guardar</button></td>
+                        </tr>
+                        <tr data-categoria="Otros">
+                            <td><div class="categoria-nombre"><div class="categoria-icono icono-otros">📦</div> Otros</div></td>
+                            <td><input type="number" class="presupuesto-input" id="presupuesto-otros" value="100000" step="10000"></td>
+                            <td class="gasto-actual" id="gasto-otros">$65,000</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 65%"></div></div><span class="porcentaje-texto bajo">65%</span></div></td>
+                            <td><button class="btn-editar-presupuesto" onclick="guardarPresupuesto('Otros')">Guardar</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumen de presupuesto -->
+            <div class="resumen-presupuesto">
+                <div class="resumen-item">
+                    <h4>💰 Presupuesto Total</h4>
+                    <div class="valor presupuesto" id="totalPresupuesto">$2,200,000</div>
+                </div>
+                <div class="resumen-item">
+                    <h4>💸 Total Asignado a Metas</h4>
+                    <div class="valor asignado" id="totalAsignadoMetas">$400,000</div>
+                </div>
+                <div class="resumen-item">
+                    <h4>✅ Restante para Metas</h4>
+                    <div class="valor restante" id="totalRestanteMetas">$50,000</div>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div id="alertasContainer" class="alertas-container"></div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECCIÓN DE METAS -->
+        <!-- ============================================ -->
+        <div class="metas-section">
+            <div class="metas-header">
+                <h2>Metas Financieras de los Usuarios</h2>
+                <button class="btn-agregar" onclick="mostrarFormularioMeta()">+ Nueva Meta</button>
+            </div>
+
+            <!-- Formulario para nueva meta -->
+            <div id="formNuevaMeta" class="form-meta" style="display: none;">
+                <h3>Crear Nueva Meta</h3>
+                <div class="form-group">
+                    <input type="text" id="nombreMeta" placeholder="Nombre de la meta (ej: Viaje a Europa)">
+                </div>
+                <div class="form-group">
+                    <select id="categoriaMeta">
+                        <option value="Viajes">✈️ Viajes</option>
+                        <option value="Ahorro">🏦 Ahorro</option>
+                        <option value="Educación">📚 Educación</option>
+                        <option value="Tecnología">💻 Tecnología</option>
+                        <option value="Salud">🏥 Salud</option>
+                        <option value="Vivienda">🏠 Vivienda</option>
+                        <option value="Otros">📦 Otros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="montoObjetivo" placeholder="Monto objetivo">
+                </div>
+                <div class="form-group">
+                    <input type="number" id="montoActual" placeholder="Monto actual" value="0">
+                </div>
+                <div class="form-group">
+                    <select id="usuarioMeta">
+                        <option value="Carlos López">Carlos López</option>
+                        <option value="María García">María García</option>
+                        <option value="Juan Pérez">Juan Pérez</option>
+                        <option value="Ana Rodríguez">Ana Rodríguez</option>
+                        <option value="Laura Martínez">Laura Martínez</option>
+                    </select>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn-guardar" onclick="guardarMeta()">Crear Meta</button>
+                    <button class="btn-cancelar" onclick="cerrarFormulario()">Cancelar</button>
+                </div>
+            </div>
+
+            <!-- Tabla de metas activas -->
+            <div class="tabla-metas">
+                <table id="tablaMetas">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Meta</th>
+                            <th>Categoría</th>
+                            <th>Progreso</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMetas">
+                        <tr>
+                            <td>Carlos López</td>
+                            <td>💻 Laptop Gamer</td>
+                            <td>Tecnología</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 53%"></div></div><span class="porcentaje-texto bajo">53%</span></div></td>
+                            <td><span class="badge-regular">En progreso</span></td>
+                            <td><button class="btn-editar" onclick="editarMeta(this)">Editar</button><button class="btn-eliminar" onclick="eliminarMeta(this)">Eliminar</button></td>
+                        </tr>
+                        <tr>
+                            <td>María García</td>
+                            <td>✈️ Viaje a Europa</td>
+                            <td>Viajes</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar medio" style="width: 60%"></div></div><span class="porcentaje-texto medio">60%</span></div></td>
+                            <td><span class="badge-regular">En progreso</span></td>
+                            <td><button class="btn-editar" onclick="editarMeta(this)">Editar</button><button class="btn-eliminar" onclick="eliminarMeta(this)">Eliminar</button></td>
+                        </tr>
+                        <tr>
+                            <td>Juan Pérez</td>
+                            <td>🏦 Fondo de Emergencia</td>
+                            <td>Ahorro</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar medio" style="width: 50%"></div></div><span class="porcentaje-texto medio">50%</span></div></td>
+                            <td><span class="badge-regular">En progreso</span></td>
+                            <td><button class="btn-editar" onclick="editarMeta(this)">Editar</button><button class="btn-eliminar" onclick="eliminarMeta(this)">Eliminar</button></td>
+                        </tr>
+                        <tr>
+                            <td>Ana Rodríguez</td>
+                            <td>📚 Maestría</td>
+                            <td>Educación</td>
+                            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar bajo" style="width: 37%"></div></div><span class="porcentaje-texto bajo">37%</span></div></td>
+                            <td><span class="badge-regular">En progreso</span></td>
+                            <td><button class="btn-editar" onclick="editarMeta(this)">Editar</button><button class="btn-eliminar" onclick="eliminarMeta(this)">Eliminar</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Metas cumplidas -->
+        <div class="metas-cumplidas">
+            <h3>✅ Metas Cumplidas</h3>
+            <div class="tabla-metas">
+                <table>
+                    <thead>
+                        <tr><th>Usuario</th><th>Meta</th><th>Monto Logrado</th><th>Fecha Cumplimiento</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Carlos López</td><td>🎮 Consola</td><td>$800</td><td>15/05/2024</td></tr>
+                        <tr><td>María García</td><td>📱 Teléfono</td><td>$1,200</td><td>10/04/2024</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar -->
+<div id="modalEditar" class="modal">
+    <div class="modal-content">
+        <h3>Editar Meta</h3>
+        <input type="text" id="editNombreMeta" placeholder="Nombre">
+        <input type="number" id="editMontoObjetivo" placeholder="Monto objetivo">
+        <input type="number" id="editMontoActual" placeholder="Monto actual">
+        <div class="modal-buttons">
+            <button class="btn-guardar" onclick="confirmarEditar()">Guardar</button>
+            <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Datos de gastos por categoría
+    const gastosData = {
+        Comida: 320000,
+        Servicios: 245000,
+        Transporte: 230000,
+        Entretenimiento: 98000,
+        Salud: 180000,
+        Educacion: 280000,
+        Metas: 350000,
+        Otros: 65000
+    };
+
+    let filaEditando = null;
+
+    function actualizarResumen() {
+        let totalPresupuesto = 0;
+        let presupuestoMetas = 0;
+        
+        const categorias = ['Comida', 'Servicios', 'Transporte', 'Entretenimiento', 'Salud', 'Educacion', 'Metas', 'Otros'];
+        
+        categorias.forEach(cat => {
+            const input = document.getElementById(`presupuesto-${cat.toLowerCase()}`);
+            if (input) {
+                const valor = parseFloat(input.value) || 0;
+                totalPresupuesto += valor;
+                if (cat === 'Metas') presupuestoMetas = valor;
+            }
+        });
+        
+        const gastadoMetas = gastosData.Metas;
+        const restanteMetas = presupuestoMetas - gastadoMetas;
+        
+        document.getElementById('totalPresupuesto').innerHTML = `$${totalPresupuesto.toLocaleString()}`;
+        document.getElementById('totalAsignadoMetas').innerHTML = `$${presupuestoMetas.toLocaleString()}`;
+        document.getElementById('totalRestanteMetas').innerHTML = `$${restanteMetas.toLocaleString()}`;
+        
+        // Alertas
+        const alertasContainer = document.getElementById('alertasContainer');
+        alertasContainer.innerHTML = '';
+        
+        if (restanteMetas < 0) {
+            alertasContainer.innerHTML += `
+                <div class="alerta-presupuesto alerta-roja">
+                    <span class="alerta-icono">⚠️</span>
+                    <span><strong>Metas</strong>: Se ha excedido el presupuesto para metas en $${Math.abs(restanteMetas).toLocaleString()}</span>
+                </div>
+            `;
+        } else if (restanteMetas < presupuestoMetas * 0.1) {
+            alertasContainer.innerHTML += `
+                <div class="alerta-presupuesto">
+                    <span class="alerta-icono">⚠️</span>
+                    <span><strong>Metas</strong>: Estás cerca de alcanzar el presupuesto de metas</span>
+                </div>
+            `;
+        }
+    }
+    
+    function guardarPresupuesto(categoria) {
+        const input = document.getElementById(`presupuesto-${categoria.toLowerCase()}`);
+        const valor = parseInt(input.value) || 0;
+        alert(`Presupuesto para ${categoria} actualizado a $${valor.toLocaleString()}`);
+        actualizarResumen();
+    }
+    
+    function aplicarPresupuestoATodos() {
+        const mes = document.getElementById('mesPresupuesto').value;
+        alert(`Presupuesto aplicado a TODOS los usuarios para el mes de ${mes}`);
+    }
+    
+    function mostrarFormularioMeta() {
+        const form = document.getElementById('formNuevaMeta');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    function cerrarFormulario() {
+        document.getElementById('formNuevaMeta').style.display = 'none';
+        document.getElementById('nombreMeta').value = '';
+        document.getElementById('montoObjetivo').value = '';
+        document.getElementById('montoActual').value = '0';
+    }
+    
+    function guardarMeta() {
+        const nombre = document.getElementById('nombreMeta').value;
+        const objetivo = document.getElementById('montoObjetivo').value;
+        const actual = document.getElementById('montoActual').value;
+        const categoria = document.getElementById('categoriaMeta').value;
+        const usuario = document.getElementById('usuarioMeta').value;
+        
+        if (!nombre || !objetivo) {
+            alert('Por favor complete todos los campos');
+            return;
+        }
+        
+        const porcentaje = (actual / objetivo * 100).toFixed(0);
+        let clasePorcentaje = 'bajo';
+        if (porcentaje > 80) clasePorcentaje = 'alto';
+        else if (porcentaje > 50) clasePorcentaje = 'medio';
+        
+        const iconos = { Viajes: '✈️', Ahorro: '🏦', Educación: '📚', Tecnología: '💻', Salud: '🏥', Vivienda: '🏠', Otros: '📦' };
+        const icono = iconos[categoria] || '🎯';
+        
+        const tbody = document.getElementById('tbodyMetas');
+        const nuevaFila = tbody.insertRow();
+        nuevaFila.innerHTML = `
+            <td>${usuario}</td>
+            <td>${icono} ${nombre}</td>
+            <td>${categoria}</td>
+            <td><div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar ${clasePorcentaje}" style="width: ${porcentaje}%"></div></div><span class="porcentaje-texto ${clasePorcentaje}">${porcentaje}%</span></div></td>
+            <td><span class="badge-regular">En progreso</span></td>
+            <td><button class="btn-editar" onclick="editarMeta(this)">Editar</button><button class="btn-eliminar" onclick="eliminarMeta(this)">Eliminar</button></td>
+        `;
+        
+        cerrarFormulario();
+        alert('Meta creada exitosamente');
+    }
+    
+    function editarMeta(boton) {
+        filaEditando = boton.parentElement.parentElement;
+        const celdas = filaEditando.cells;
+        const metaTexto = celdas[1].innerText;
+        const progresoTexto = celdas[3].innerText;
+        
+        const meta = metaTexto.substring(2);
+        const match = progresoTexto.match(/(\d+)%/);
+        const porcentaje = match ? match[1] : 0;
+        
+        document.getElementById('editNombreMeta').value = meta;
+        document.getElementById('editMontoObjetivo').value = '';
+        document.getElementById('editMontoActual').value = '';
+        
+        document.getElementById('modalEditar').style.display = 'flex';
+    }
+    
+    function confirmarEditar() {
+        if (filaEditando) {
+            const nuevoNombre = document.getElementById('editNombreMeta').value;
+            const nuevoObjetivo = document.getElementById('editMontoObjetivo').value;
+            const nuevoActual = document.getElementById('editMontoActual').value;
+            
+            if (nuevoNombre) filaEditando.cells[1].innerHTML = filaEditando.cells[1].innerText.charAt(0) + ' ' + nuevoNombre;
+            if (nuevoObjetivo && nuevoActual) {
+                const porcentaje = (nuevoActual / nuevoObjetivo * 100).toFixed(0);
+                let clasePorcentaje = 'bajo';
+                if (porcentaje > 80) clasePorcentaje = 'alto';
+                else if (porcentaje > 50) clasePorcentaje = 'medio';
+                
+                filaEditando.cells[3].innerHTML = `<div class="progreso-container"><div class="progreso-bar-container"><div class="progreso-bar ${clasePorcentaje}" style="width: ${porcentaje}%"></div></div><span class="porcentaje-texto ${clasePorcentaje}">${porcentaje}%</span></div>`;
+                
+                if (porcentaje >= 100) {
+                    filaEditando.cells[4].innerHTML = '<span class="badge-cumplida">Cumplida</span>';
+                }
+            }
+        }
+        cerrarModal();
+        alert('Meta actualizada');
+    }
+    
+    function eliminarMeta(boton) {
+        if (confirm('¿Eliminar esta meta?')) {
+            boton.parentElement.parentElement.remove();
+            alert('Meta eliminada');
+        }
+    }
+    
+    function cerrarModal() {
+        document.getElementById('modalEditar').style.display = 'none';
+        filaEditando = null;
+    }
+    
+    document.getElementById('mesPresupuesto').addEventListener('change', function() {
+        alert(`Cargando presupuesto para ${this.value}`);
+    });
+    
+    actualizarResumen();
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Inicio - Panel Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li class="active"><a href="principal.html">🏠 Inicio</a></li>
+            <li><a href="usuarios.html">👥 Usuarios</a></li>
+            <li><a href="finanzas.html">💰 Finanzas</a></li>
+            <li><a href="reportes.html">📊 Reportes</a></li>
+            <li><a href="metas.html">🎯 Metas</a></li>
+            <li><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <!-- CONTENIDO -->
+    <div class="contenido">
+        <h1>Pagina Principal</h1>
+        <p class="subtitulo">Bienvenido al panel de administración</p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>👥 Total Usuarios</h3>
+                <p>1,248</p>
+                <span class="trend positivo">▲ +12%</span>
+            </div>
+            <div class="card">
+                <h3>💰 Ingresos Totales</h3>
+                <p>$2.45M</p>
+                <span class="trend positivo">▲ +15%</span>
+            </div>
+            <div class="card">
+                <h3>💸 Gastos Totales</h3>
+                <p>$1.85M</p>
+                <span class="trend negativo">▼ +8%</span>
+            </div>
+            <div class="card">
+                <h3>📈 Ahorro Global</h3>
+                <p class="positivo">$600K</p>
+                <span class="trend positivo">▲ +22%</span>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>📊 Ingresos vs Gastos (Última semana)</h3>
+            <div class="chart-content">
+                <div class="bars" id="graficaPrincipal">
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Lun</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Mar</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Mié</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Jue</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Vie</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Sáb</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Dom</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="chart-tooltip"></div>
+
+<script>
+    function cargarGrafica() {
+        let ingresos = [2000, 1800, 2200, 2500, 2800, 2400, 2100];
+        let gastos = [1200, 1000, 1400, 1600, 1800, 1500, 1300];
+        let max = 3000;
+        document.querySelectorAll("#graficaPrincipal .bar-group").forEach((grupo, i) => {
+            grupo.querySelector(".green").style.height = (ingresos[i] / max * 100) + "%";
+            grupo.querySelector(".red").style.height = (gastos[i] / max * 100) + "%";
+            grupo.querySelector(".green").setAttribute("data-val", "Ingresos: $" + ingresos[i]);
+            grupo.querySelector(".red").setAttribute("data-val", "Gastos: $" + gastos[i]);
+        });
+    }
+    const tooltip = document.getElementById("chart-tooltip");
+    document.addEventListener("mouseover", e => {
+        if(e.target.classList.contains("bar")) {
+            tooltip.innerText = e.target.getAttribute("data-val");
+            tooltip.style.display = "block";
+        }
+    });
+    document.addEventListener("mousemove", e => {
+        tooltip.style.left = (e.clientX + 10) + "px";
+        tooltip.style.top = (e.clientY - 10) + "px";
+    });
+    document.addEventListener("mouseout", () => tooltip.style.display = "none");
+    cargarGrafica();
+</script>
+</body>
+</html>

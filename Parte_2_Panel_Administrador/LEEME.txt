@@ -1,0 +1,5 @@
+PARTE 2 — PANEL DE ADMINISTRACIÓN
+
+Contiene las páginas HTML y el CSS del panel administrativo. raiz.html es una página de entrada del proyecto.
+
+HTML define las secciones y CSS define el diseño. Comprueba las rutas a imágenes, CSS y JavaScript antes de abrirlas.

@@ -1,0 +1,7 @@
+PARTE 3 — BACKEND
+
+Contiene el servidor Node.js/Express y el package.json que estaba en la carpeta del backend.
+
+Este servidor gestiona solicitudes del frontend y conexión con MySQL. Para ejecutarlo, instala las dependencias con npm install y configura las credenciales de la base de datos.
+
+IMPORTANTE: no publiques contraseñas reales. La configuración actual debe revisarse antes de usar el sistema fuera de un entorno local. El ZIP original no mostró un archivo SQL de instalación en la lista de archivos reconocidos.

@@ -1,0 +1,22 @@
+# Dependencias (se instalan con npm install)
+node_modules/
+
+# Base de datos local: tiene los datos reales de los usuarios
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Compilación del frontend
+dist/
+
+# Variables de entorno y registros
+.env
+*.log
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

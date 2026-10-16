@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Finanzas</title>
+    <script src="inicio.js"></script>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo">🐷 <span>Finanzas <b>Personales</b></span></div>
+            <nav class="menu">
+                <a href="#" class="active">Página Principal</a>
+                <a href="#">Gastos e Ingresos</a>
+                <a href="#">Metas</a>
+                <a href="#">Configuración</a>
+                
+                <div class="mode-toggle-section">
+                    <div class="dark-mode-switch">
+                        <span id="mode-label" class="mode-label">☀️ Claro</span>
+                        <label class="switch">
+                            <input type="checkbox" id="dark-mode-checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </nav>
+            <div class="user-profile">
+                <div class="info" id="user-info">
+                    <!-- JS cargará esto -->
+                </div>
+                <button id="btn-logout" class="btn-logout">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <section class="welcome-banner">
+                <div class="welcome-text">
+                    <h2 id="welcome-title">¡Bienvenido!</h2>
+                    <p>Esto es un resumen de tus finanzas personales.</p>
+                </div>
+                <div class="welcome-illustration">👨‍💻💰</div>
+            </section>
+
+            <section class="stat-cards">
+                <div class="card">
+                    <p>Saldo Actual</p>
+                    <h3 id="saldo-total">$0</h3>
+                    <span id="saldo-subtext" class="sub-text">Total en cuenta</span>
+                </div>
+                <div class="card">
+                    <p>Gastos Totales</p>
+                    <h3 id="gastos-totales" class="negative">-$0</h3>
+                    <span class="sub-text negative">Acumulado</span>
+                </div>
+                <div class="card">
+                    <p>Ingresos Totales</p>
+                    <h3 id="ingresos-totales" class="positive">+$0</h3>
+                    <span class="sub-text positive">Acumulado</span>
+                </div>
+            </section>
+
+            <div class="dashboard-grid">
+                <section class="goals-section">
+                    <div class="section-header">
+                        <h4>Mis Metas de Ahorro</h4>
+                    </div>
+                    <div id="goals-list" class="goals-list"></div>
+                </section>
+
+                <div class="right-column">
+                    <section class="payments-section">
+                        <div class="section-header">
+                            <h4>Pagos Recurrentes</h4>
+                            <button id="btn-open-recurrente" class="btn-add-mini" title="Programar nuevo pago">+</button>
+                        </div>
+                        <div id="payments-list" class="payments-list"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL PAGO (APORTE) -->
+    <div id="modal-pago" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>💰 Registrar Aporte</h3>
+            <p id="pago-desc-modal"></p>
+            <div class="info-pago-fijo">
+                <div class="dato-fijo">Monto Total: <b id="pago-monto-total"></b></div>
+                <div class="dato-fijo highlight-red">Faltante: <b id="pago-faltante"></b></div>
+            </div>
+            <div class="form-group">
+                <label>¿Cuánto vas a aportar ahora?</label>
+                <input type="number" id="input-monto-pago" placeholder="Ej: 20000">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="cerrarModal('modal-pago')">Cancelar</button>
+                <button id="btn-confirmar-pago" class="btn-save">Confirmar Aporte</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

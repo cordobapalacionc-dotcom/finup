@@ -1,0 +1,5 @@
+PARTE 4 — FRONTEND VUE
+
+Contiene la implementación de interfaz basada en Vue y Vite que también aparece dentro del ZIP original. Puede ser una versión distinta de las páginas tradicionales de USUARIOverdadero.
+
+Para ejecutarla, instala las dependencias con npm install y usa el comando definido en package.json. No mezcles esta versión con la interfaz tradicional hasta confirmar cuál es la versión principal.

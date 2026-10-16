@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Finanzas - Administrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <h1 id="tituloM" >Finanzas<span>Personales</span></h1>
+        <ul>
+            <li><a href="principal.html">🏠 Inicio</a></li>
+            <li><a href="usuarios.html">👥 Usuarios</a></li>
+            <li class="active"><a href="finanzas.html">💰 Finanzas</a></li>
+            <li><a href="reportes.html">📊 Reportes</a></li>
+            <li><a href="metas.html">🎯 Metas</a></li>
+            <li><a href="configuracion.html">⚙️ Configuración</a></li>
+        </ul>
+        <div class="perfil">
+            <div class="icono">👤</div>
+            <p>Administrador</p>
+            <span>Admin</span>
+        </div>
+    </div>
+
+    <div class="contenido">
+        <h1>Finanzas</h1>
+        <p class="subtitulo">Gestión de ingresos y gastos</p>
+
+        <div class="cards">
+            <div class="card"><h3>💰 Total Ingresos</h3><p>$2,450,000</p></div>
+            <div class="card"><h3>💸 Total Gastos</h3><p>$1,850,000</p></div>
+            <div class="card"><h3>📈 Balance</h3><p class="positivo">$600,000</p></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>📊 Evolución Financiera</h3>
+            <div class="chart-content">
+                <div class="bars" id="graficaFinanzas">
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Ene</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Feb</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Mar</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Abr</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">May</span></div>
+                    <div class="bar-group"><div class="bar green"></div><div class="bar red"></div><span class="day-label">Jun</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabla">
+            <h3>📋 Transacciones Recientes</h3>
+            <table>
+                <thead><tr><th>Usuario</th><th>Tipo</th><th>Categoría</th><th>Monto</th><th>Fecha</th></tr></thead>
+                <tbody>
+                    <tr><td>Carlos López</td><td class="positivo">Ingreso</td><td>Salario</td><td>$2,500</td><td>15/06/2024</td></tr>
+                    <tr><td>María García</td><td class="negativo">Gasto</td><td>Comida</td><td>$450</td><td>14/06/2024</td></tr>
+                    <tr><td>Juan Pérez</td><td class="negativo">Gasto</td><td>Transporte</td><td>$120</td><td>13/06/2024</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="chart-tooltip"></div>
+<script>
+    let ingresos = [1800, 2000, 2200, 2400, 2600, 2450];
+    let gastos = [1100, 1300, 1450, 1650, 1800, 1850];
+    let max = 3000;
+    document.querySelectorAll("#graficaFinanzas .bar-group").forEach((g, i) => {
+        g.querySelector(".green").style.height = (ingresos[i] / max * 100) + "%";
+        g.querySelector(".red").style.height = (gastos[i] / max * 100) + "%";
+        g.querySelector(".green").setAttribute("data-val", "Ingresos: $" + ingresos[i]);
+        g.querySelector(".red").setAttribute("data-val", "Gastos: $" + gastos[i]);
+    });
+    const tooltip = document.getElementById("chart-tooltip");
+    document.addEventListener("mouseover", e => { if(e.target.classList.contains("bar")) { tooltip.innerText = e.target.getAttribute("data-val"); tooltip.style.display = "block"; } });
+    document.addEventListener("mousemove", e => { tooltip.style.left = (e.clientX + 10) + "px"; tooltip.style.top = (e.clientY - 10) + "px"; });
+    document.addEventListener("mouseout", () => tooltip.style.display = "none");
+</script>
+</body>
+</html>
