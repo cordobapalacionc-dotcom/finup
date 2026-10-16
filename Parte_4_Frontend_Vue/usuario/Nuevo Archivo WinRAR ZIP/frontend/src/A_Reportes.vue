@@ -258,6 +258,7 @@ const ESTILO_CATEGORIA = {
   'Salud': { emoji: '🏥', color: '#ef4444', desc: 'Médico y farmacia' },
   'Educación': { emoji: '🎓', color: '#14b8a6', desc: 'Cursos, libros y estudios' },
   'Otros gastos': { emoji: '📦', color: '#6b7280', desc: 'Gastos varios' },
+  'Ahorro para metas': { emoji: '🐷', color: '#ec4899', desc: 'Dinero apartado para tus metas' },
 };
 const PALETA = ['#ef4444', '#14b8a6', '#ec4899', '#6b7280'];
 const CIRCUNFERENCIA = 2 * Math.PI * 40;

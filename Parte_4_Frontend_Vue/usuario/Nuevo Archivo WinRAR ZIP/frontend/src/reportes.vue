@@ -1,24 +1,6 @@
 <template>
   <div class="dashboard">
-    <aside class="sidebar">
-      <div class="logo">🐷 <span>Finanzas <b>Personales</b></span></div>
-
-      <nav class="menu">
-        <router-link to="/inicio">Página Principal</router-link>
-        <router-link to="/gastos">Gastos e Ingresos</router-link>
-        <router-link to="/metas">Metas</router-link>
-        <router-link to="/reportes" class="active">Reportes</router-link>
-        <router-link to="/configuracion">Configuración</router-link>
-      </nav>
-
-      <div class="user-profile">
-        <div class="info">
-          <b>{{ sesion?.nombre }}</b><br>
-          {{ sesion?.rol }}
-        </div>
-        <button @click="cerrarSesion" class="btn-logout">Cerrar Sesión</button>
-      </div>
-    </aside>
+    <MenuUsuario />
 
     <main class="main">
       <header class="header">
@@ -127,6 +109,7 @@
 </template>
 
 <script setup>
+import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, moneda, obtenerSesion } from './api';
@@ -139,7 +122,7 @@ const NOMBRE_PERIODO = { '7': 'Últimos 7 días', '30': 'Últimos 30 días', '90
 const AGRUPACION = { '7': 'dias=7', '30': 'dias=30&agrupar=semana', '90': 'meses=3', '365': 'meses=12' };
 const EMOJI = {
   'Alimentación': '🛒', 'Transporte': '🚗', 'Entretenimiento': '🎬', 'Servicios': '💡',
-  'Salud': '🏥', 'Educación': '🎓', 'Otros gastos': '📦'
+  'Salud': '🏥', 'Educación': '🎓', 'Otros gastos': '📦', 'Ahorro para metas': '🐷'
 };
 
 const periodo = ref('30');
@@ -225,17 +208,6 @@ const borrarTodos = async () => {
   }
 };
 
-const cerrarSesion = async () => {
-  try {
-    await api('/logout', { method: 'POST', body: {} });
-  } catch (e) {
-    console.error(e);
-  } finally {
-    localStorage.removeItem('usuario_identificado');
-    router.push('/');
-  }
-};
-
 onMounted(() => {
   cargarDatos();
   cargarGuardados().catch(e => console.error(e));
@@ -245,26 +217,6 @@ onMounted(() => {
 <style scoped>
 /* --- Estructura y menú (igual que las demás pantallas del usuario) --- */
 .dashboard { display: flex; min-height: 100vh; background: #f0f4f8; font-family: 'Poppins', sans-serif; }
-.sidebar {
-  width: 10%;
-  min-width: 170px;
-  background: #122326;
-  color: white;
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-}
-.logo { font-size: 1.2rem; margin-bottom: 40px; }
-.logo b { color: #2dbb73; }
-.menu a { color: #a0aec0; text-decoration: none; padding: 12px 15px; margin-bottom: 8px; border-radius: 12px; display: block; }
-.menu a.active,
-.menu a:hover { color: white; background: rgba(45, 187, 115, 0.15); border-left: 4px solid #2dbb73; }
-.user-profile { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2d3748; }
-.user-profile .info { color: #5778a4; margin-bottom: 12px; }
-.btn-logout { width: 100%; padding: 8px; background: #e53e3e; color: white; border: none; border-radius: 8px; cursor: pointer; }
 
 .main { flex: 1; padding: 40px; min-width: 0; }
 

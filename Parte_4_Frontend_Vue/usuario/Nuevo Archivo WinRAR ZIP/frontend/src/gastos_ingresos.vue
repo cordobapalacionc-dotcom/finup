@@ -1,26 +1,6 @@
 <template>
   <div class="dashboard">
-    <aside class="sidebar">
-      <div class="logo">
-        🐷 <span>Finanzas <b>Personales</b></span>
-      </div>
-      
-      <nav class="menu">
-        <router-link to="/inicio">Página Principal</router-link>
-        <router-link to="/gastos" class="active">Gastos e Ingresos</router-link>
-        <router-link to="/metas">Metas</router-link>
-        <router-link to="/reportes">Reportes</router-link>
-        <router-link to="/configuracion">Configuración</router-link>
-      </nav>
-      
-      <div class="user-profile">
-        <div class="info">
-          <b>{{ usuario.nombre }}</b><br>
-          {{ usuario.rol }}
-        </div>
-        <button @click="cerrarSesion" class="btn-logout">Cerrar Sesión</button>
-      </div>
-    </aside>
+    <MenuUsuario />
 
     <main class="main">
       <header class="header">
@@ -100,7 +80,7 @@
                 {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ Number(item.monto).toLocaleString() }}
               </td>
               <td class="opciones-celda">
-                <button class="btn-edit" @click="editarRegistro(item)">✏️</button>
+                <button v-if="!item.meta_id" class="btn-edit" @click="editarRegistro(item)">✏️</button>
                 <button class="btn-delete" @click="eliminarRegistro(item.id)">🗑️</button>
               </td>
             </tr>
@@ -177,6 +157,7 @@
 </template>
 
 <script setup>
+import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import { categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, cargarCategorias } from './categorias';
 
@@ -307,21 +288,12 @@ onMounted(() => {
   if (sesion) usuario.value = JSON.parse(sesion);
   cargarDatosDesdeDB(usuario.value.id);
 });
-
-const cerrarSesion = () => { localStorage.removeItem('usuario_identificado'); router.push('/'); };
 const mostrarTooltip = (e, texto) => { tooltip.value = { ver: true, texto, x: e.clientX + 15, y: e.clientY - 15 }; };
 const ocultarTooltip = () => { tooltip.value.ver = false; };
 </script>
 
 <style scoped>
 .dashboard { display: flex; min-height: 100vh; background: #f0f4f8; font-family: 'Poppins', sans-serif; }
-.sidebar { width: 10%; background: #122326; color:#122326; padding: 25px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
-.logo { font-size: 1.2rem; margin-bottom: 40px; }
-.logo b { color: #2dbb73; }
-.menu a { display: block; color: #a0aec0; text-decoration: none; padding: 12px 15px; margin-bottom: 8px; border-radius: 12px; transition: 0.3s; }
-.menu a.active, .menu a:hover { color: white; background: rgba(45, 187, 115, 0.15); }
-.user-profile { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2d3748; }
-.btn-logout { width: 100%; padding: 8px; background: #e53e3e; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
 
 .main { flex: 1; padding: 30px 50px; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }

@@ -1,24 +1,6 @@
 <template>
   <div class="dashboard">
-    <aside class="sidebar">
-      <div class="logo">🐷 <span>Finanzas <b>Personales</b></span></div>
-
-      <nav class="menu">
-        <router-link to="/inicio">Página Principal</router-link>
-        <router-link to="/gastos">Gastos e Ingresos</router-link>
-        <router-link to="/metas" class="active">Metas</router-link>
-        <router-link to="/reportes">Reportes</router-link>
-        <router-link to="/configuracion">Configuración</router-link>
-      </nav>
-
-      <div class="user-profile">
-        <div style="color: #5778a4;" class="info">
-          <b>{{ usuario.nombre }}</b><br>
-          {{ usuario.rol }}
-        </div>
-        <button @click="cerrarSesion" class="btn-logout">Cerrar Sesión</button>
-      </div>
-    </aside>
+    <MenuUsuario />
 
     <main class="main">
       <header class="header">
@@ -52,6 +34,7 @@
             </div>
             <div class="actions">
               <button v-if="calcularPorcentaje(meta) < 100" @click="abrirModalAbono(index)" class="btn-abonar" title="Abonar dinero a esta meta">💰 Abonar</button>
+              <button v-else @click="abrirModalRetiro(index)" class="btn-retirar" title="Sacar dinero de esta meta">💸 Sacar dinero</button>
               <button @click="abrirModalMeta(index)" class="btn-mini">✏️</button>
               <button @click="eliminarMeta(index)" class="btn-icon-delete">🗑️</button>
             </div>
@@ -133,7 +116,9 @@
           <div class="input-group" v-if="modal.editandoIndex !== null">
             <label>Ahorro Actual ($)</label>
             <input v-model.number="nuevaMeta.ahorro" type="number" min="0" @keydown="bloquearNegativos">
+            <small class="ayuda-ahorro">Si lo subes, la diferencia se descuenta de tu saldo; si lo bajas, vuelve a tu saldo.</small>
           </div>
+          <p v-if="errorMeta" class="abono-error">{{ errorMeta }}</p>
         </div>
 
         <div v-if="modal.tipo === 'abono'" class="abono-contenido">
@@ -142,11 +127,31 @@
             Llevas <b>${{ (metaAbono?.ahorro || 0).toLocaleString() }}</b> de ${{ (metaAbono?.monto || 0).toLocaleString() }}.
             Te faltan <b>${{ faltanteAbono.toLocaleString() }}</b>.
           </p>
+          <p class="abono-saldo">💵 Saldo disponible: <b>${{ saldoDisponible.toLocaleString() }}</b> · el abono se descuenta de tu saldo</p>
           <div class="input-group">
             <label>¿Cuánto quieres abonar? ($)</label>
             <input v-model.number="montoAbono" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarAbono">
           </div>
-          <button type="button" class="btn-completar" @click="montoAbono = faltanteAbono">Completar la meta (${{ faltanteAbono.toLocaleString() }})</button>
+          <p v-if="errorAbono" class="abono-error">{{ errorAbono }}</p>
+          <button v-if="maximoAbono > 0" type="button" class="btn-completar" @click="montoAbono = maximoAbono">
+            {{ maximoAbono >= faltanteAbono ? 'Completar la meta' : 'Abonar todo mi saldo' }} (${{ maximoAbono.toLocaleString() }})
+          </button>
+        </div>
+
+        <div v-if="modal.tipo === 'retiro'" class="abono-contenido">
+          <p class="abono-meta">✨ {{ metaRetiro?.nombre }}</p>
+          <p class="abono-detalle">
+            ¡Cumpliste esta meta! Tienes <b>${{ (metaRetiro?.ahorro || 0).toLocaleString() }}</b> ahorrados.
+          </p>
+          <p class="abono-saldo">💵 Lo que saques vuelve a tu saldo para que puedas usarlo</p>
+          <div class="input-group">
+            <label>¿Cuánto quieres sacar? ($)</label>
+            <input v-model.number="montoRetiro" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarRetiro">
+          </div>
+          <p v-if="errorRetiro" class="abono-error">{{ errorRetiro }}</p>
+          <button v-if="(metaRetiro?.ahorro || 0) > 0" type="button" class="btn-completar" @click="montoRetiro = metaRetiro.ahorro">
+            Sacar todo (${{ metaRetiro.ahorro.toLocaleString() }})
+          </button>
         </div>
 
         <div v-if="modal.tipo === 'presupuesto'">
@@ -168,7 +173,7 @@
 
         <div class="modal-actions">
           <button @click="cerrarModal" class="btn-cancel">Cancelar</button>
-          <button @click="modal.tipo === 'meta' ? guardarMeta() : (modal.tipo === 'abono' ? guardarAbono() : guardarPresupuesto())" class="btn-save">{{ modal.tipo === 'abono' ? 'Abonar' : 'Guardar' }}</button>
+          <button @click="modal.tipo === 'meta' ? guardarMeta() : (modal.tipo === 'abono' ? guardarAbono() : (modal.tipo === 'retiro' ? guardarRetiro() : guardarPresupuesto()))" class="btn-save">{{ modal.tipo === 'abono' ? 'Abonar' : (modal.tipo === 'retiro' ? 'Sacar dinero' : 'Guardar') }}</button>
         </div>
       </div>
     </div>
@@ -176,6 +181,7 @@
 </template>
 
 <script setup>
+import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { categoriasGasto, etiquetaCategoria, cargarCategorias } from './categorias';
@@ -250,6 +256,8 @@ const guardarMeta = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
+    } else {
+      errorMeta.value = (await res.json()).error || 'No se pudo guardar la meta';
     }
   } catch (e) { console.error(e); }
 };
@@ -293,7 +301,10 @@ const eliminarPresupuesto = async (index) => {
   await cargarDatos();
 };
 
+const errorMeta = ref('');
+
 const abrirModalMeta = (index = null) => {
+  errorMeta.value = '';
   modal.value = { activo: true, tipo: 'meta', titulo: index !== null ? '✏️ Editar Meta' : '🎯 Nueva Meta', editandoIndex: index };
   if (index !== null) {
     const m = metas.value[index];
@@ -317,44 +328,83 @@ const abrirModalPresupuesto = (index = null) => {
 const metaAbono = ref(null);
 const montoAbono = ref(null);
 const faltanteAbono = computed(() => metaAbono.value ? Math.max(metaAbono.value.monto - (metaAbono.value.ahorro || 0), 0) : 0);
+const saldoDisponible = ref(0);
+const errorAbono = ref('');
+// Lo máximo que se puede abonar: lo que falta, sin pasar del saldo
+const maximoAbono = computed(() => Math.max(Math.min(faltanteAbono.value, saldoDisponible.value), 0));
 
-const abrirModalAbono = (index) => {
+const cargarSaldo = async () => {
+  const res = await fetch(`${API_URL}/resumen/${usuario.value.id}`);
+  const r = await res.json();
+  saldoDisponible.value = (r.ingresos || 0) - (r.gastos || 0);
+};
+
+const abrirModalAbono = async (index) => {
   metaAbono.value = metas.value[index];
   montoAbono.value = null;
+  errorAbono.value = '';
   modal.value = { activo: true, tipo: 'abono', titulo: '💰 Abonar a la meta', editandoIndex: null };
+  try { await cargarSaldo(); } catch (e) { console.error(e); }
 };
 
 const guardarAbono = async () => {
   if (!metaAbono.value || !(montoAbono.value > 0)) return;
+  if (montoAbono.value > saldoDisponible.value) {
+    errorAbono.value = `No tienes saldo suficiente. Puedes abonar hasta $${Math.max(saldoDisponible.value, 0).toLocaleString()}.`;
+    return;
+  }
   try {
     const res = await fetch(`${API_URL}/metas/${metaAbono.value.id}/abonar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ monto: Number(montoAbono.value) })
     });
+    const data = await res.json();
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
+    } else {
+      errorAbono.value = data.error || 'No se pudo registrar el abono';
+      if (typeof data.saldo === 'number') saldoDisponible.value = data.saldo;
+    }
+  } catch (e) { console.error(e); }
+};
+
+// --- SACAR DINERO DE UNA META CUMPLIDA ---
+const metaRetiro = ref(null);
+const montoRetiro = ref(null);
+const errorRetiro = ref('');
+
+const abrirModalRetiro = (index) => {
+  metaRetiro.value = metas.value[index];
+  montoRetiro.value = null;
+  errorRetiro.value = '';
+  modal.value = { activo: true, tipo: 'retiro', titulo: '💸 Sacar dinero de la meta', editandoIndex: null };
+};
+
+const guardarRetiro = async () => {
+  if (!metaRetiro.value || !(montoRetiro.value > 0)) return;
+  if (montoRetiro.value > metaRetiro.value.ahorro) {
+    errorRetiro.value = `La meta solo tiene $${metaRetiro.value.ahorro.toLocaleString()} ahorrados.`;
+    return;
+  }
+  try {
+    const res = await fetch(`${API_URL}/metas/${metaRetiro.value.id}/retirar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monto: Number(montoRetiro.value) })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      await cargarDatos();
+      cerrarModal();
+    } else {
+      errorRetiro.value = data.error || 'No se pudo sacar el dinero';
     }
   } catch (e) { console.error(e); }
 };
 
 const cerrarModal = () => { modal.value.activo = false; };
-
-const cerrarSesion = async () => {
-  try {
-    if (usuario.value.id) {
-      await fetch(`${API_URL}/logout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_id: usuario.value.id })
-      });
-    }
-  } finally {
-    localStorage.removeItem('usuario_identificado');
-    router.push('/');
-  }
-};
 
 const calcularPorcentaje = (m) => {
     if (!m.monto || m.monto === 0) return 0;
@@ -384,25 +434,7 @@ onMounted(() => {
 
 <style scoped>
 .dashboard { display: flex; min-height: 100vh; background: #f0f4f8; font-family: 'Poppins', sans-serif; }
-.sidebar { 
-  width: 10%;
-  background: #122326; 
-  color: white; 
-  padding: 25px; 
-  display: flex; 
-  flex-direction: column; 
-  /* Agregamos esto para que sea fijo y ocupe el alto total */
-  height: 100vh;
-  position: sticky;
-  top: 0;
-}
-.user-profile { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2d3748; }
-.btn-logout { width: 100%; padding: 8px; background: #e53e3e; color: white; border: none; border-radius: 8px; cursor: pointer; }
-.logo { font-size: 1.2rem; margin-bottom: 40px; }
-.logo b { color: #2dbb73; }
-.menu a { color: #a0aec0; text-decoration: none; padding: 12px 15px; margin-bottom: 8px; border-radius: 12px; display: block; }
-.menu a.active { color: white; background: rgba(45, 187, 115, 0.15); border-left: 4px solid #2dbb73; }
-.menu a:hover { color: white; background: rgba(45, 187, 115, 0.15); border-left: 4px solid #2dbb73; }
+
 .main { flex: 1; padding: 40px; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
 .header h1 span { color: #2dbb73; }
@@ -449,7 +481,6 @@ onMounted(() => {
 .positive { color: #38a169; }
 .summary { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; }
 
-
 .modal-select {
   width: 100%;
   padding: 12px;
@@ -479,8 +510,23 @@ onMounted(() => {
   white-space: nowrap;
 }
 .btn-abonar:hover { background: #1a8a4a; }
+.btn-retirar {
+  background: #3182ce;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-retirar:hover { background: #2b6cb0; }
 .abono-meta { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
-.abono-detalle { font-size: 14px; color: #5778a4; margin: 0 0 16px; }
+.abono-detalle { font-size: 14px; color: #5778a4; margin: 0 0 8px; }
+.abono-saldo { font-size: 13px; color: #1a8a4a; background: rgba(45, 187, 115, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0 0 16px; }
+.abono-error { font-size: 13px; color: #e53e3e; margin: -6px 0 10px; }
+.ayuda-ahorro { display: block; font-size: 12px; color: #5778a4; margin-top: 6px; }
 .btn-completar {
   background: none;
   border: 1px dashed #2dbb73;

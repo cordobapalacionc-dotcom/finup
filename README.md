@@ -33,7 +33,7 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 |---|---|
 | **Página principal** | Resumen de ingresos, gastos y saldo, metas activas y pagos recurrentes con su progreso. |
 | **Gastos e Ingresos** | Registrar, editar y eliminar movimientos por categoría, con gráfica semanal. |
-| **Metas** | Crear metas de ahorro, **abonarles dinero** (o completarlas de un clic) y definir presupuestos por categoría. |
+| **Metas** | Crear metas de ahorro, **abonarles dinero de tu saldo** (o completarlas de un clic), **sacar el dinero de una meta cumplida** de vuelta al saldo y definir presupuestos por categoría. |
 | **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gráfica, gasto por categoría y reportes guardados que se pueden desplegar y borrar. |
 | **Pagos recurrentes** | Programar pagos (luz, arriendo, etc.) y registrar abonos hasta completarlos. |
 | **Configuración** | Cambiar nombre, correo y contraseña, y elegir **tema claro u oscuro**. |
@@ -46,7 +46,7 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | **Usuarios** | Buscar, crear, editar (incluida la contraseña) y eliminar usuarios. |
 | **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. |
 | **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría y **reportes guardados** que se pueden desplegar y borrar. |
-| **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, editar y eliminar). |
+| **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, **sacar dinero** cuando está cumplida, editar y eliminar). |
 
 ---
 
@@ -170,17 +170,20 @@ La base es un archivo SQLite (`finanzas_app.db`) que el backend crea automática
 | `usuarios` | Cuentas, rol (`admin` / `usuario`) y estado de conexión. |
 | `sesiones` | Tokens de sesión (guardados como hash) y su caducidad. |
 | `categorias` | Categorías de ingreso y de gasto. |
-| `transacciones` | Ingresos y gastos de cada usuario. |
+| `transacciones` | Ingresos y gastos de cada usuario. Los aportes a metas llevan `meta_id`. |
 | `historial_cambios` | Registro automático (triggers) de cada movimiento editado o eliminado. |
 | `metas` | Metas de ahorro: objetivo, ahorro actual y fecha límite. |
 | `presupuestos` | Límites de gasto por categoría (mensuales o semanales). |
 | `transacciones_recurrentes` | Pagos periódicos y lo abonado. |
 | `reportes` | Reportes guardados por el administrador, con una foto de los datos en JSON. |
 
+**El ahorro de las metas sale del saldo.** Cada aporte (abono, ahorro inicial o subir el ahorro con el lápiz) se registra como gasto de la categoría *Ahorro para metas* vinculado a su meta. Al bajar el ahorro o eliminar la meta, esos aportes se reducen o se borran y el dinero vuelve al saldo. Nunca se puede aportar más del saldo disponible.
+
 **Categorías incluidas**
 
 - **Ingresos:** Sueldo, Freelance, Otros ingresos
 - **Gastos:** Alimentación, Transporte, Entretenimiento, Servicios, Salud, Educación, Otros gastos
+- **Automática:** Ahorro para metas (se asigna sola al abonar a una meta; no aparece en los formularios)
 
 Para **empezar de cero**, detén el backend, borra `finanzas_app.db` y vuelve a arrancarlo. ⚠️ Se pierden todos los datos.
 
@@ -222,9 +225,10 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `PUT` | `/movimientos/:id` | Edita un movimiento. |
 | `DELETE` | `/movimientos/:id` | Elimina un movimiento. |
 | `GET` | `/metas/:usuario_id` | Lista de metas. |
-| `POST` | `/metas` | Crea una meta, o la edita si se envía `id`. |
-| `POST` | `/metas/:id/abonar` | Suma dinero (`monto`) al ahorro de una meta propia. También lo usa el administrador. |
-| `DELETE` | `/metas/:id` | Elimina una meta. |
+| `POST` | `/metas` | Crea una meta, o la edita si se envía `id`. Si cambia el ahorro, la diferencia se descuenta del saldo o vuelve a él. |
+| `POST` | `/metas/:id/abonar` | Pasa dinero (`monto`) del saldo a una meta propia: lo registra como gasto de la categoría *Ahorro para metas* y lo rechaza si no hay saldo suficiente. También lo usa el administrador. |
+| `POST` | `/metas/:id/retirar` | Saca dinero (`monto`) de una meta propia **ya cumplida** y lo devuelve al saldo (reduce sus abonos, del más reciente al más antiguo). No permite sacar más de lo ahorrado. También lo usa el administrador. |
+| `DELETE` | `/metas/:id` | Elimina una meta y devuelve al saldo todo lo que se le había aportado. |
 | `GET` | `/presupuestos/:usuario_id` | Lista de presupuestos. |
 | `POST` | `/presupuestos` | Crea un presupuesto, o lo edita si se envía `id`. |
 | `DELETE` | `/presupuestos/:id` | Elimina un presupuesto. |

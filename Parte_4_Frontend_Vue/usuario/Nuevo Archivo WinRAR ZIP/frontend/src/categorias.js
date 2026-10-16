@@ -12,13 +12,17 @@ const EMOJI = {
   'Servicios': '💡',
   'Salud': '🏥',
   'Educación': '🎓',
-  'Otros gastos': '📦'
+  'Otros gastos': '📦',
+  'Ahorro para metas': '🐷'
 }
+
+// Se asigna sola al abonar a una meta: no se ofrece en los formularios
+const AUTOMATICAS = ['Ahorro para metas']
 
 export const categorias = ref([])
 
 export const categoriasIngreso = computed(() => categorias.value.filter(c => c.tipo === 'ingreso'))
-export const categoriasGasto = computed(() => categorias.value.filter(c => c.tipo === 'gasto'))
+export const categoriasGasto = computed(() => categorias.value.filter(c => c.tipo === 'gasto' && !AUTOMATICAS.includes(c.nombre)))
 
 // "🛒 Alimentación"
 export const etiquetaCategoria = (c) => `${EMOJI[c.nombre] || '🏷️'} ${c.nombre}`

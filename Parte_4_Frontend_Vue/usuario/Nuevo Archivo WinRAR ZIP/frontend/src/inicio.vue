@@ -1,4 +1,5 @@
 <script setup>
+import MenuUsuario from './MenuUsuario.vue';
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from 'vue-router'
 import { categoriasGasto, etiquetaCategoria, cargarCategorias } from "./categorias";
@@ -209,23 +210,6 @@ const editarRecurrente = (p) => {
   mostrarModalRecurrente.value = true;
 };
 
-const cerrarSesion = async () => {
-  try {
-    if (usuario.value.id) {
-      await fetch('http://localhost:3000/api/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_id: usuario.value.id })
-      });
-    }
-  } catch (error) {
-    console.error("Error en logout:", error);
-  } finally {
-    localStorage.removeItem('usuario_identificado');
-    router.push('/');
-  }
-};
-
 // --- CICLO DE VIDA (Actualizado para el tema) ---
 onMounted(async () => {
 
@@ -249,26 +233,7 @@ onMounted(async () => {
 
 <template>
   <div class="dashboard-container">
-    <aside class="sidebar">
-      <div class="logo">🐷 <span>Finanzas <b>Personales</b></span></div>
-
-      <nav class="menu">
-        <router-link to="/inicio" class="active">Página Principal</router-link>
-        <router-link to="/gastos">Gastos e Ingresos</router-link>
-        <router-link to="/metas">Metas</router-link>
-        <router-link to="/reportes">Reportes</router-link>
-        <router-link to="/configuracion">Configuración</router-link>
-        
-      </nav>
-      
-      <div class="user-profile">
-        <div class="info">
-          <b>{{ usuario.nombre }}</b><br>
-          {{ usuario.rol }}
-        </div>
-        <button @click="cerrarSesion" class="btn-logout">Cerrar Sesión</button>
-      </div>
-    </aside>
+    <MenuUsuario />
 
     <main class="main-content">
       <section class="welcome-banner">
@@ -475,47 +440,6 @@ onMounted(async () => {
   width: 100%;
   font-family: 'Poppins', sans-serif; 
 }
-
-.sidebar { 
-  width: 250px; 
-  background: #122326; 
-  color: white; 
-  padding: 25px; 
-  display: flex; 
-  flex-direction: column; 
-}
-
-.logo { font-size: 1.2rem; margin-bottom: 40px; }
-.logo b { color: #2dbb73; }
-
-.menu a, .menu router-link { 
-  display: block; 
-  color: #a0aec0; 
-  text-decoration: none; 
-  padding: 12px 15px; 
-  margin-bottom: 8px; 
-  border-radius: 12px; 
-  transition: 0.3s; 
-}
-
-.menu a:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left: 4px solid #2dbb73; }
-.menu a.active { color: white; background: rgba(45, 187, 115, 0.15); border-left: 4px solid #2dbb73; }
-
-.user-profile { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2d3748; }
-.info { font-size: 0.9rem; color: #5778a4; margin-bottom: 20px; }
-
-.btn-logout { 
-  width: 100%; 
-  padding: 8px; 
-  background: #e53e3e; 
-  color: white; 
-  border: none; 
-  border-radius: 8px; 
-  cursor: pointer; 
-  font-weight: bold; 
-  transition: 0.2s;
-}
-.btn-logout:hover { background: #c53030; }
 
 .main-content { flex: 1; padding: 30px 50px;background-color: #f0f4f8; }
 

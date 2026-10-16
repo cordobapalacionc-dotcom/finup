@@ -1,29 +1,6 @@
 <template>
   <div class="dashboard">
-    <aside class="sidebar">
-      <div class="logo">
-        <span>🐷 Finanzas <b>Personales</b></span>
-      </div>
-
-      <nav class="menu">
-        <router-link to="/inicio">Página Principal</router-link>
-        <router-link to="/gastos">Gastos e Ingresos</router-link>
-        <router-link to="/metas">Metas</router-link>
-        <router-link to="/reportes">Reportes</router-link>
-        <router-link to="/configuracion" class="active">Configuración</router-link>
-      </nav>
-
-      
-      <div class="user-profile">
-        <div class="info">
-          <b>{{ perfil.nombre }}</b><br>
-          <span>Estudiante</span>
-        </div>
-        
-
-        <button class="btn-logout" @click="cerrarSesion">Cerrar Sesión</button>
-      </div>
-    </aside>
+    <MenuUsuario />
 
     <main class="contenido">
       <header class="header-section">
@@ -94,6 +71,7 @@
 </template>
 
 <script setup>
+import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from "vue";
 import { tema } from "./tema";
 import { useRouter } from 'vue-router';
@@ -185,23 +163,6 @@ const guardarCambios = async () => {
   }
 };
 
-const cerrarSesion = async () => {
-  try {
-    if (usuarioId.value) {
-      await fetch('http://localhost:3000/api/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_id: usuarioId.value })
-      });
-    }
-  } catch (err) {
-    console.error("Error al cerrar sesión en servidor:", err);
-  } finally {
-    localStorage.removeItem('usuario_identificado');
-    router.push('/');
-  }
-};
-
 const aplicarSistema = () => {};
 const guardarNotificaciones = () => {};
 
@@ -224,72 +185,13 @@ onMounted(() => {
   font-family: 'Poppins', sans-serif;
 }
 
-/* SIDEBAR */
-.sidebar {
-  width: 10%;
-  background: #122326;
-  color: white;
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  height: 100vh;
-  z-index: 100;
-}
-
-.logo { font-size: 1.2rem; margin-bottom: 40px; }
-.logo b { color: #2dbb73; }
-
-.menu a {
-  display: block;
-  color: #a0aec0;
-  text-decoration: none;
-  padding: 12px 15px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  transition: 0.3s;
-}
-
-.menu a:hover, .menu a.router-link-active {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.menu a.active {
-  background: rgba(45, 187, 115, 0.15);
-  border-left: 4px solid #2dbb73;
-  color: white;
-}
-
-.user-profile { 
-  margin-top: 30px; 
-  border-top: 1px solid rgba(255,255,255,0.1); 
-  padding-top: 20px; 
-}
-
-.info { font-size: 0.9rem; color: #5778a4; margin-bottom: 15px; }
-
-.btn-logout {
-  width: 100%; 
-  padding: 10px; 
-  background: #e53e3e; 
-  color: white; 
-  border: none; 
-  border-radius: 10px; 
-  cursor: pointer; 
-  font-weight: bold;
-  transition: 0.3s;
-}
-.btn-logout:hover { background: #c53030; }
-
 /* CONTENIDO */
 .contenido {
   flex: 1;
   padding: 40px 60px;
-  margin-left: 250px; /* Espacio para el sidebar fixed */
 }
 
-h1 { margin: 0; color: #1a202c; font-size: 2.2rem; }
+h1 { margin: 0; color: #1a202c; font-size: 2rem; }
 .subtitulo { color: #718096; margin-bottom: 40px; }
 
 /* GRID DE TARJETAS */

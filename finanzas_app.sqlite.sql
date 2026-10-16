@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS transacciones (
   categoria_id INTEGER NOT NULL REFERENCES categorias(id),
   monto        REAL NOT NULL,
   descripcion  TEXT,
-  fecha        TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  fecha        TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  meta_id      INTEGER -- si es un aporte a una meta (categoría "Ahorro para metas")
 );
 CREATE INDEX IF NOT EXISTS fk_trans_usuario   ON transacciones(usuario_id);
 CREATE INDEX IF NOT EXISTS fk_trans_categoria ON transacciones(categoria_id);
@@ -128,7 +129,8 @@ INSERT OR IGNORE INTO categorias (id, nombre, tipo) VALUES
 (7, 'Salud', 'gasto'),
 (8, 'Educación', 'gasto'),
 (9, 'Otros gastos', 'gasto'),
-(10, 'Otros ingresos', 'ingreso');
+(10, 'Otros ingresos', 'ingreso'),
+(11, 'Ahorro para metas', 'gasto'); -- la usan los abonos a metas (dinero que sale del saldo)
 
 -- Único administrador. SHA-256 de 'Admin123'.
 INSERT OR IGNORE INTO usuarios (id, nombre, correo, contraseña, rol, estado) VALUES

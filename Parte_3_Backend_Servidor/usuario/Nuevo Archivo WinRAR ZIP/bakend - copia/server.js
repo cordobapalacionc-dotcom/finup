@@ -24,6 +24,10 @@ db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8'));
 if (!db.prepare('PRAGMA table_info(reportes)').all().some((c) => c.name === 'datos')) {
     db.exec('ALTER TABLE reportes ADD COLUMN datos TEXT');
 }
+// Bases creadas antes de vincular los aportes con su meta
+if (!db.prepare('PRAGMA table_info(transacciones)').all().some((c) => c.name === 'meta_id')) {
+    db.exec('ALTER TABLE transacciones ADD COLUMN meta_id INTEGER');
+}
 console.log('✅ Conectado a SQLite:', DB_PATH);
 
 // Como mysql2: los campos que no llegan (undefined) se guardan como NULL
@@ -184,7 +188,7 @@ app.get('/api/resumen/:usuario_id', mismoUsuario, (req, res) => {
 });
 
 app.get('/api/movimientos/:usuario_id', mismoUsuario, (req, res) => {
-    res.json(prepare(`SELECT id, tipo, monto, descripcion, fecha, categoria_id
+    res.json(prepare(`SELECT id, tipo, monto, descripcion, fecha, categoria_id, meta_id
                  FROM transacciones WHERE usuario_id = ? ORDER BY fecha DESC`).all(req.params.usuario_id));
 });
 
@@ -197,6 +201,9 @@ app.post('/api/movimientos', (req, res) => {
 });
 
 app.put('/api/movimientos/:id', (req, res) => {
+    const actual = prepare('SELECT meta_id FROM transacciones WHERE id = ? AND usuario_id = ?').get(req.params.id, req.usuario.id);
+    if (!actual) return noEncontrado(res);
+    if (actual.meta_id) return res.status(400).json({ error: "Este movimiento es un aporte a una meta: cámbialo desde Metas" });
     const { tipo, categoria_id, monto, descripcion, nombre_ingreso } = req.body;
     const detalle = nombre_ingreso || descripcion || 'Sin detalle';
     const result = prepare(`UPDATE transacciones SET tipo = ?, categoria_id = ?, monto = ?, descripcion = ? WHERE id = ? AND usuario_id = ?`)
@@ -206,49 +213,159 @@ app.put('/api/movimientos/:id', (req, res) => {
 });
 
 app.delete('/api/movimientos/:id', (req, res) => {
-    const result = prepare('DELETE FROM transacciones WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
-    if (result.changes === 0) return noEncontrado(res);
+    const mov = prepare('SELECT id, monto, meta_id FROM transacciones WHERE id = ? AND usuario_id = ?').get(req.params.id, req.usuario.id);
+    if (!mov) return noEncontrado(res);
+    enTransaccion(() => {
+        prepare('DELETE FROM transacciones WHERE id = ?').run(mov.id);
+        // Si era un aporte a una meta, ese dinero deja de estar en la meta
+        if (mov.meta_id) prepare('UPDATE metas SET monto_actual = MAX(monto_actual - ?, 0) WHERE id = ?').run(mov.monto, mov.meta_id);
+    });
     res.json({ mensaje: "Eliminado correctamente" });
 });
 
 // --- 3. METAS ---
+
+// El ahorro de una meta sale del saldo. Cada aporte es un gasto de la categoría "Ahorro para metas"
+// vinculado a la meta (meta_id). Al bajar el ahorro o eliminar la meta, esos aportes se reducen o
+// se borran (del más reciente al más antiguo) y el dinero vuelve al saldo.
+class SaldoInsuficiente extends Error {
+    constructor(saldo) {
+        super('Saldo insuficiente');
+        this.saldo = saldo;
+    }
+}
+
+const enTransaccion = (fn) => {
+    db.exec('BEGIN');
+    try {
+        const resultado = fn();
+        db.exec('COMMIT');
+        return resultado;
+    } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+    }
+};
+
+const saldoDe = (usuarioId) => prepare(`
+    SELECT IFNULL(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE -monto END), 0) AS saldo
+    FROM transacciones WHERE usuario_id = ?`).get(usuarioId).saldo;
+
+const aportarAMeta = (usuarioId, meta, monto) => {
+    if (!(monto > 0)) return;
+    const saldo = saldoDe(usuarioId);
+    if (monto > saldo) throw new SaldoInsuficiente(saldo);
+    const categoria = prepare(`SELECT id FROM categorias WHERE nombre = 'Ahorro para metas' AND tipo = 'gasto'`).get();
+    prepare(`INSERT INTO transacciones (usuario_id, tipo, categoria_id, monto, descripcion, meta_id) VALUES (?, 'gasto', ?, ?, ?, ?)`)
+        .run(usuarioId, categoria.id, monto, `Abono a meta: ${meta.nombre}`, meta.id);
+    prepare('UPDATE metas SET monto_actual = monto_actual + ? WHERE id = ?').run(monto, meta.id);
+};
+
+// Devuelve al saldo hasta "monto" y lo quita del ahorro de la meta. Devuelve lo que volvió al saldo.
+const retirarDeMeta = (meta, monto) => {
+    if (!(monto > 0)) return 0;
+    let pendiente = monto;
+    const aportes = prepare('SELECT id, monto FROM transacciones WHERE meta_id = ? ORDER BY fecha DESC, id DESC').all(meta.id);
+    for (const aporte of aportes) {
+        if (pendiente <= 0) break;
+        if (aporte.monto <= pendiente) {
+            prepare('DELETE FROM transacciones WHERE id = ?').run(aporte.id);
+            pendiente -= aporte.monto;
+        } else {
+            prepare('UPDATE transacciones SET monto = ? WHERE id = ?').run(aporte.monto - pendiente, aporte.id);
+            pendiente = 0;
+        }
+    }
+    prepare('UPDATE metas SET monto_actual = MAX(monto_actual - ?, 0) WHERE id = ?').run(monto, meta.id);
+    return monto - pendiente;
+};
+
+// Lleva el ahorro de la meta a "nuevoAhorro" moviendo la diferencia desde o hacia el saldo
+const ajustarAhorro = (usuarioId, meta, nuevoAhorro) => {
+    const diferencia = nuevoAhorro - meta.monto_actual;
+    if (diferencia > 0) aportarAMeta(usuarioId, meta, diferencia);
+    if (diferencia < 0) retirarDeMeta(meta, -diferencia);
+};
+
+const crearMeta = (usuarioId, { nombre, monto_objetivo, monto_actual, fecha_limite }) => enTransaccion(() => {
+    const id = Number(prepare(`INSERT INTO metas (usuario_id, nombre, monto_objetivo, monto_actual, fecha_limite) VALUES (?, ?, ?, 0, ?)`)
+        .run(usuarioId, nombre, Number(monto_objetivo) || 0, fecha_limite || new Date().toISOString().slice(0, 10)).lastInsertRowid);
+    aportarAMeta(usuarioId, { id, nombre }, Math.max(Number(monto_actual) || 0, 0));
+    return id;
+});
+
+const actualizarMeta = (usuarioId, meta, { nombre, monto_objetivo, monto_actual, fecha_limite }) => enTransaccion(() => {
+    prepare('UPDATE metas SET nombre = ?, monto_objetivo = ?, fecha_limite = COALESCE(?, fecha_limite) WHERE id = ?')
+        .run(nombre, Number(monto_objetivo) || 0, fecha_limite || null, meta.id);
+    ajustarAhorro(usuarioId, { ...meta, nombre }, Math.max(Number(monto_actual) || 0, 0));
+});
+
+// Elimina la meta y devuelve al saldo todo lo que se le había aportado
+const eliminarMeta = (meta) => enTransaccion(() => {
+    const devuelto = retirarDeMeta(meta, meta.monto_actual);
+    prepare('DELETE FROM transacciones WHERE meta_id = ?').run(meta.id); // por si quedaba algún aporte
+    prepare('DELETE FROM metas WHERE id = ?').run(meta.id);
+    return devuelto;
+});
+
+const metaPropia = (req, id) => prepare('SELECT * FROM metas WHERE id = ? AND usuario_id = ?').get(id, req.usuario.id);
 
 app.get('/api/metas/:usuario_id', mismoUsuario, (req, res) => {
     res.json(prepare('SELECT * FROM metas WHERE usuario_id = ?').all(req.params.usuario_id));
 });
 
 app.post('/api/metas', (req, res) => {
-    const { id, nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
-    const ahorro = parseFloat(monto_actual) || 0;
-    const meta = parseFloat(monto_objetivo) || 0;
-    const fecha = fecha_limite || new Date().toISOString().slice(0, 10);
-
+    const { id } = req.body;
     if (id) {
-        const result = prepare(`UPDATE metas SET nombre = ?, monto_objetivo = ?, monto_actual = ?, fecha_limite = ? WHERE id = ? AND usuario_id = ?`)
-            .run(nombre, meta, ahorro, fecha, id, req.usuario.id);
-        if (result.changes === 0) return noEncontrado(res);
-        res.json({ mensaje: "Meta actualizada." });
-    } else {
-        const result = prepare(`INSERT INTO metas (usuario_id, nombre, monto_objetivo, monto_actual, fecha_limite) VALUES (?, ?, ?, ?, ?)`)
-            .run(req.usuario.id, nombre, meta, ahorro, fecha);
-        res.status(201).json({ mensaje: "Meta creada.", id: Number(result.lastInsertRowid) });
+        const meta = metaPropia(req, id);
+        if (!meta) return noEncontrado(res);
+        actualizarMeta(req.usuario.id, meta, req.body);
+        return res.json({ mensaje: "Meta actualizada.", saldo: saldoDe(req.usuario.id) });
     }
+    const nuevoId = crearMeta(req.usuario.id, req.body);
+    res.status(201).json({ mensaje: "Meta creada.", id: nuevoId, saldo: saldoDe(req.usuario.id) });
 });
 
-// Suma dinero al ahorro de una meta propia (sirve igual para usuarios y administrador)
+// Abonar a una meta propia (usuarios y administrador): el dinero sale del saldo
 app.post('/api/metas/:id/abonar', (req, res) => {
     const monto = Number(req.body.monto);
     if (!(monto > 0)) return res.status(400).json({ error: "El monto a abonar debe ser mayor que 0" });
-    const result = prepare('UPDATE metas SET monto_actual = monto_actual + ? WHERE id = ? AND usuario_id = ?')
-        .run(monto, req.params.id, req.usuario.id);
-    if (result.changes === 0) return noEncontrado(res);
-    res.json({ mensaje: "Abono registrado", meta: prepare('SELECT * FROM metas WHERE id = ?').get(req.params.id) });
+    const meta = metaPropia(req, req.params.id);
+    if (!meta) return noEncontrado(res);
+    enTransaccion(() => aportarAMeta(req.usuario.id, meta, monto));
+    res.json({
+        mensaje: "Abono registrado",
+        meta: prepare('SELECT * FROM metas WHERE id = ?').get(meta.id),
+        saldo: saldoDe(req.usuario.id)
+    });
+});
+
+// Sacar dinero de una meta propia ya cumplida (usuarios y administrador): el dinero vuelve al saldo
+app.post('/api/metas/:id/retirar', (req, res) => {
+    const monto = Number(req.body.monto);
+    if (!(monto > 0)) return res.status(400).json({ error: "El monto a sacar debe ser mayor que 0" });
+    const meta = metaPropia(req, req.params.id);
+    if (!meta) return noEncontrado(res);
+    if (meta.monto_actual < meta.monto_objetivo) {
+        return res.status(400).json({ error: "Solo puedes sacar dinero de una meta cumplida" });
+    }
+    if (monto > meta.monto_actual) {
+        return res.status(400).json({ error: `La meta solo tiene $${meta.monto_actual.toLocaleString('es-CO')} ahorrados` });
+    }
+    const retirado = enTransaccion(() => retirarDeMeta(meta, monto));
+    res.json({
+        mensaje: "Dinero devuelto a tu saldo",
+        retirado,
+        meta: prepare('SELECT * FROM metas WHERE id = ?').get(meta.id),
+        saldo: saldoDe(req.usuario.id)
+    });
 });
 
 app.delete('/api/metas/:id', (req, res) => {
-    const result = prepare('DELETE FROM metas WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
-    if (result.changes === 0) return noEncontrado(res);
-    res.json({ mensaje: "Meta eliminada" });
+    const meta = metaPropia(req, req.params.id);
+    if (!meta) return noEncontrado(res);
+    const devuelto = eliminarMeta(meta);
+    res.json({ mensaje: "Meta eliminada", devuelto, saldo: saldoDe(req.usuario.id) });
 });
 
 // --- 4. PRESUPUESTOS ---
@@ -491,34 +608,34 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
     res.json({ mensaje: "Usuario eliminado" });
 });
 
-// Metas del propio administrador (las de los usuarios solo las ve cada usuario)
+// Metas del propio administrador (las de los usuarios solo las ve cada usuario). Mismas reglas de saldo.
 app.get('/api/admin/metas', (req, res) => {
     res.json(prepare('SELECT * FROM metas WHERE usuario_id = ? ORDER BY fecha_limite').all(req.usuario.id));
 });
 
 app.post('/api/admin/metas', (req, res) => {
-    const { nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
+    const { nombre, monto_objetivo } = req.body;
     if (!nombre || !(Number(monto_objetivo) > 0)) {
         return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
     }
-    const result = prepare(`INSERT INTO metas (usuario_id, nombre, monto_objetivo, monto_actual, fecha_limite) VALUES (?, ?, ?, ?, ?)`)
-        .run(req.usuario.id, nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || new Date().toISOString().slice(0, 10));
-    res.status(201).json({ mensaje: "Meta creada", id: Number(result.lastInsertRowid) });
+    const id = crearMeta(req.usuario.id, req.body);
+    res.status(201).json({ mensaje: "Meta creada", id, saldo: saldoDe(req.usuario.id) });
 });
 
 app.put('/api/admin/metas/:id', (req, res) => {
-    const { nombre, monto_objetivo, monto_actual, fecha_limite } = req.body;
+    const { nombre, monto_objetivo } = req.body;
     if (!nombre || !(Number(monto_objetivo) > 0)) return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
-    const result = prepare(`UPDATE metas SET nombre = ?, monto_objetivo = ?, monto_actual = ?, fecha_limite = COALESCE(?, fecha_limite) WHERE id = ? AND usuario_id = ?`)
-        .run(nombre, Number(monto_objetivo), Number(monto_actual) || 0, fecha_limite || null, req.params.id, req.usuario.id);
-    if (result.changes === 0) return noEncontrado(res);
-    res.json({ mensaje: "Meta actualizada" });
+    const meta = metaPropia(req, req.params.id);
+    if (!meta) return noEncontrado(res);
+    actualizarMeta(req.usuario.id, meta, req.body);
+    res.json({ mensaje: "Meta actualizada", saldo: saldoDe(req.usuario.id) });
 });
 
 app.delete('/api/admin/metas/:id', (req, res) => {
-    const result = prepare('DELETE FROM metas WHERE id = ? AND usuario_id = ?').run(req.params.id, req.usuario.id);
-    if (result.changes === 0) return noEncontrado(res);
-    res.json({ mensaje: "Meta eliminada" });
+    const meta = metaPropia(req, req.params.id);
+    if (!meta) return noEncontrado(res);
+    const devuelto = eliminarMeta(meta);
+    res.json({ mensaje: "Meta eliminada", devuelto, saldo: saldoDe(req.usuario.id) });
 });
 
 // Presupuestos del administrador por categoría, con lo que él gastó en el mes ?mes=YYYY-MM
@@ -572,6 +689,9 @@ app.delete(['/api/admin/reportes', '/api/reportes/guardados'], (req, res) => {
 // --- ERRORES ---
 
 app.use((err, req, res, next) => {
+    if (err instanceof SaldoInsuficiente) {
+        return res.status(400).json({ error: `No tienes saldo suficiente. Tu saldo disponible es $${Math.max(err.saldo, 0).toLocaleString('es-CO')}.`, saldo: err.saldo });
+    }
     if (/UNIQUE constraint failed: usuarios.correo/.test(err.message)) {
         return res.status(400).json({ error: "El correo ya está registrado" });
     }

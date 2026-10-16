@@ -124,7 +124,7 @@
                 <input v-model.number="nuevaMeta.monto_objetivo" type="number" min="1" placeholder="0" required>
               </label>
               <label class="campo">
-                <span>Ahorro actual <em>(opcional)</em></span>
+                <span>Ahorro inicial <em>(opcional, sale de tu saldo)</em></span>
                 <input v-model.number="nuevaMeta.monto_actual" type="number" min="0" placeholder="0">
               </label>
               <label class="campo">
@@ -132,6 +132,7 @@
                 <input v-model="nuevaMeta.fecha_limite" type="date">
               </label>
             </div>
+            <p v-if="errorForm" class="abono-error form-error">{{ errorForm }}</p>
             <div class="form-acciones">
               <button type="button" class="btn-secundario" @click="cancelarMeta">Cancelar</button>
               <button type="submit" class="btn-agregar">Crear meta</button>
@@ -173,6 +174,7 @@
                 </td>
                 <td class="col-acciones">
                   <button v-if="getMetaPorcentaje(meta) < 100" class="btn-abonar" @click="abrirAbono(meta)">💰 Abonar</button>
+                  <button v-else class="btn-retirar" @click="abrirRetiro(meta)">💸 Sacar dinero</button>
                   <button class="btn-editar" @click="abrirEditar(meta)">✏️ Editar</button>
                   <button class="btn-eliminar" @click="eliminarMeta(meta)">🗑️ Eliminar</button>
                 </td>
@@ -198,14 +200,39 @@
           Llevas <b>{{ moneda(metaAbono.monto_actual) }}</b> de {{ moneda(metaAbono.monto_objetivo) }}.
           Te faltan <b>{{ moneda(faltanteAbono) }}</b>.
         </p>
+        <p class="abono-saldo">💵 Saldo disponible: <b>{{ moneda(saldoDisponible) }}</b> · el abono se descuenta de tu saldo</p>
         <label class="campo">
           <span>Monto a abonar</span>
           <input v-model.number="montoAbono" type="number" min="1" placeholder="Ej: 50000" required>
         </label>
-        <button type="button" class="btn-completar" @click="montoAbono = faltanteAbono">Completar la meta ({{ moneda(faltanteAbono) }})</button>
+        <p v-if="errorAbono" class="abono-error">{{ errorAbono }}</p>
+        <button v-if="maximoAbono > 0" type="button" class="btn-completar" @click="montoAbono = maximoAbono">
+          {{ maximoAbono >= faltanteAbono ? 'Completar la meta' : 'Abonar todo mi saldo' }} ({{ moneda(maximoAbono) }})
+        </button>
         <div class="form-acciones">
           <button type="button" class="btn-secundario" @click="metaAbono = null">Cancelar</button>
           <button type="submit" class="btn-agregar">Abonar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Sacar dinero (metas cumplidas) -->
+    <div v-if="metaRetiro" class="modal-overlay" @click.self="metaRetiro = null">
+      <form class="modal-content" @submit.prevent="guardarRetiro">
+        <h3>💸 Sacar dinero de "{{ metaRetiro.nombre }}"</h3>
+        <p class="abono-detalle">¡Cumpliste esta meta! Tienes <b>{{ moneda(metaRetiro.monto_actual) }}</b> ahorrados.</p>
+        <p class="abono-saldo">💵 Lo que saques vuelve a tu saldo para que puedas usarlo</p>
+        <label class="campo">
+          <span>Monto a sacar</span>
+          <input v-model.number="montoRetiro" type="number" min="1" placeholder="Ej: 50000" required>
+        </label>
+        <p v-if="errorRetiro" class="abono-error">{{ errorRetiro }}</p>
+        <button v-if="metaRetiro.monto_actual > 0" type="button" class="btn-completar" @click="montoRetiro = metaRetiro.monto_actual">
+          Sacar todo ({{ moneda(metaRetiro.monto_actual) }})
+        </button>
+        <div class="form-acciones">
+          <button type="button" class="btn-secundario" @click="metaRetiro = null">Cancelar</button>
+          <button type="submit" class="btn-agregar">Sacar dinero</button>
         </div>
       </form>
     </div>
@@ -216,8 +243,13 @@
         <h3>Editar meta</h3>
         <label class="campo"><span>Nombre</span><input v-model.trim="metaEditando.nombre" type="text" required></label>
         <label class="campo"><span>Monto objetivo</span><input v-model.number="metaEditando.monto_objetivo" type="number" min="1" required></label>
-        <label class="campo"><span>Ahorro actual</span><input v-model.number="metaEditando.monto_actual" type="number" min="0"></label>
+        <label class="campo">
+          <span>Ahorro actual</span>
+          <input v-model.number="metaEditando.monto_actual" type="number" min="0">
+          <em class="ayuda-ahorro">Si lo subes, la diferencia se descuenta de tu saldo; si lo bajas, vuelve a tu saldo.</em>
+        </label>
         <label class="campo"><span>Fecha límite</span><input v-model="metaEditando.fecha_limite" type="date"></label>
+        <p v-if="errorEdicion" class="abono-error">{{ errorEdicion }}</p>
         <div class="form-acciones">
           <button type="button" class="btn-secundario" @click="metaEditando = null">Cancelar</button>
           <button type="submit" class="btn-agregar">Guardar cambios</button>
@@ -262,6 +294,7 @@ const ESTILO_CATEGORIA = {
   'Salud': { icono: '🏥', clase: 'icono-servicios' },
   'Educación': { icono: '🎓', clase: 'icono-transporte' },
   'Otros gastos': { icono: '📦', clase: 'icono-metas' },
+  'Ahorro para metas': { icono: '🐷', clase: 'icono-metas' },
 };
 const estiloCategoria = (nombre) => ESTILO_CATEGORIA[nombre] || { icono: '📦', clase: 'icono-metas' };
 
@@ -327,7 +360,11 @@ const getProgresoMetaClase = (meta) => {
   return 'bajo';
 };
 
+const errorForm = ref('');
+const errorEdicion = ref('');
+
 const agregarMeta = async () => {
+  errorForm.value = '';
   if (!nuevaMeta.nombre || !(nuevaMeta.monto_objetivo > 0)) {
     return;
   }
@@ -335,9 +372,9 @@ const agregarMeta = async () => {
     await api('/admin/metas', { method: 'POST', body: { ...nuevaMeta } });
     Object.assign(nuevaMeta, metaVacia());
     mostrarForm.value = false;
-    await cargarMetas();
+    await Promise.all([cargarMetas(), cargarPresupuestos()]);
   } catch (e) {
-    console.error(e);
+    errorForm.value = e.message;
   }
 };
 
@@ -353,41 +390,85 @@ const metaAbono = ref(null);
 const montoAbono = ref(null);
 const faltanteAbono = computed(() => metaAbono.value ? Math.max(metaAbono.value.monto_objetivo - metaAbono.value.monto_actual, 0) : 0);
 
-const abrirAbono = (meta) => {
+const saldoDisponible = ref(0);
+const errorAbono = ref('');
+// Lo máximo que se puede abonar: lo que falta, sin pasar del saldo
+const maximoAbono = computed(() => Math.max(Math.min(faltanteAbono.value, saldoDisponible.value), 0));
+
+const abrirAbono = async (meta) => {
   metaAbono.value = meta;
   montoAbono.value = null;
-};
-
-const guardarAbono = async () => {
-  if (!(montoAbono.value > 0)) return;
+  errorAbono.value = '';
   try {
-    await api(`/metas/${metaAbono.value.id}/abonar`, { method: 'POST', body: { monto: Number(montoAbono.value) } });
-    metaAbono.value = null;
-    await cargarMetas();
+    const r = await api('/admin/resumen');
+    saldoDisponible.value = r.ingresos - r.gastos;
   } catch (e) {
     console.error(e);
   }
 };
 
+const guardarAbono = async () => {
+  if (!(montoAbono.value > 0)) return;
+  if (montoAbono.value > saldoDisponible.value) {
+    errorAbono.value = `No tienes saldo suficiente. Puedes abonar hasta ${moneda(Math.max(saldoDisponible.value, 0))}.`;
+    return;
+  }
+  try {
+    await api(`/metas/${metaAbono.value.id}/abonar`, { method: 'POST', body: { monto: Number(montoAbono.value) } });
+    metaAbono.value = null;
+    await Promise.all([cargarMetas(), cargarPresupuestos()]);
+  } catch (e) {
+    errorAbono.value = e.message;
+  }
+};
+
+// --- SACAR DINERO DE UNA META CUMPLIDA ---
+const metaRetiro = ref(null);
+const montoRetiro = ref(null);
+const errorRetiro = ref('');
+
+const abrirRetiro = (meta) => {
+  metaRetiro.value = meta;
+  montoRetiro.value = null;
+  errorRetiro.value = '';
+};
+
+const guardarRetiro = async () => {
+  if (!(montoRetiro.value > 0)) return;
+  if (montoRetiro.value > metaRetiro.value.monto_actual) {
+    errorRetiro.value = `La meta solo tiene ${moneda(metaRetiro.value.monto_actual)} ahorrados.`;
+    return;
+  }
+  try {
+    await api(`/metas/${metaRetiro.value.id}/retirar`, { method: 'POST', body: { monto: Number(montoRetiro.value) } });
+    metaRetiro.value = null;
+    await Promise.all([cargarMetas(), cargarPresupuestos()]);
+  } catch (e) {
+    errorRetiro.value = e.message;
+  }
+};
+
 const abrirEditar = (meta) => {
+  errorEdicion.value = '';
   metaEditando.value = { ...meta };
 };
 
 const confirmarEdicion = async () => {
+  errorEdicion.value = '';
   const { id, nombre, monto_objetivo, monto_actual, fecha_limite } = metaEditando.value;
   try {
     await api(`/admin/metas/${id}`, { method: 'PUT', body: { nombre, monto_objetivo, monto_actual, fecha_limite } });
     metaEditando.value = null;
-    await cargarMetas();
+    await Promise.all([cargarMetas(), cargarPresupuestos()]);
   } catch (e) {
-    console.error(e);
+    errorEdicion.value = e.message;
   }
 };
 
 const eliminarMeta = async (meta) => {
   try {
     await api(`/admin/metas/${meta.id}`, { method: 'DELETE' });
-    await cargarMetas();
+    await Promise.all([cargarMetas(), cargarPresupuestos()]);
   } catch (e) {
     console.error(e);
   }
@@ -2584,7 +2665,20 @@ tr:hover {
   margin-right: 8px;
 }
 .btn-abonar:hover { background: var(--primary-dark); }
+.btn-retirar {
+  background: #3182ce;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.btn-retirar:hover { background: #2b6cb0; }
 .abono-detalle { font-size: 14px; color: var(--gray-text); margin: 0; }
+.abono-saldo { font-size: 13px; color: var(--primary-dark); background: rgba(45, 187, 115, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0; }
+.abono-error { font-size: 13px; color: var(--danger-red); margin: 0; }
+.form-error { margin-top: 14px; }
+.ayuda-ahorro { font-size: 12px; font-style: normal; color: var(--gray-text); }
 .btn-completar {
   background: none;
   border: 1px dashed var(--primary-green);
