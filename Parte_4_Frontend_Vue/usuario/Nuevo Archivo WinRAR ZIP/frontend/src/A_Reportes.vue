@@ -196,7 +196,7 @@
                   <div class="categoria-monto">
                     <div class="monto">{{ moneda(cat.monto) }}</div>
                     <div class="porcentaje">{{ cat.porcentaje }}%
-                      <button v-if="sePuedeBorrar(cat)" class="btn-borrar-categoria" title="Borrar los gastos de esta categoría" @click="confirmandoCategoria = cat.id">🗑️</button>
+                      <button v-if="sePuedeBorrar(cat)" class="btn-borrar-categoria" title="Quitar los gastos de esta categoría del reporte" @click="confirmandoCategoria = cat.id">🗑️</button>
                     </div>
                   </div>
                 </div>
@@ -206,7 +206,7 @@
                   </div>
                 </div>
                 <div v-if="confirmandoCategoria === cat.id" class="confirmar-categoria">
-                  <span>¿Borrar los gastos de <b>{{ cat.nombre }}</b> de este periodo ({{ moneda(cat.monto) }})? El dinero vuelve a tu saldo.</span>
+                  <span>¿Borrar los gastos de <b>{{ cat.nombre }}</b> de este periodo ({{ moneda(cat.monto) }})? Se quitan de este reporte; el dinero gastado no vuelve a tu saldo.</span>
                   <div>
                     <button class="btn-confirmar-no" @click="confirmandoCategoria = null">No</button>
                     <button class="btn-confirmar-si" @click="borrarGastosCategoria(cat)">Sí, borrar</button>
@@ -323,7 +323,7 @@ const cargarDatos = async () => {
 onMounted(cargarDatos);
 
 // --- BORRAR LOS GASTOS DE UNA CATEGORÍA ---
-// Primer clic: pide confirmación en la misma fila. "Sí, borrar" elimina los gastos del periodo elegido.
+// Primer clic: pide confirmación en la misma fila. "Sí, borrar" los quita del reporte (no vuelven al saldo).
 const confirmandoCategoria = ref(null);
 const errorCategoria = ref('');
 const sePuedeBorrar = (cat) => cat.monto > 0 && cat.nombre !== 'Ahorro para metas';

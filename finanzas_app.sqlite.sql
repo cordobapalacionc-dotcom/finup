@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS transacciones (
   monto        REAL NOT NULL,
   descripcion  TEXT,
   fecha        TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-  meta_id      INTEGER -- si es un aporte a una meta (categoría "Ahorro para metas")
+  meta_id      INTEGER, -- si es un aporte a una meta (categoría "Ahorro para metas")
+  oculto_reporte INTEGER NOT NULL DEFAULT 0 -- 1 = quitado de "Gastos por categoría" en Reportes (sigue contando en el saldo)
 );
 CREATE INDEX IF NOT EXISTS fk_trans_usuario   ON transacciones(usuario_id);
 CREATE INDEX IF NOT EXISTS fk_trans_categoria ON transacciones(categoria_id);
@@ -113,6 +114,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS tg_historial_update AFTER UPDATE ON transacciones
+WHEN OLD.monto IS NOT NEW.monto OR OLD.descripcion IS NOT NEW.descripcion
 BEGIN
   INSERT INTO historial_cambios (transaccion_id, usuario_id, monto_anterior, monto_nuevo, descripcion_anterior, descripcion_nueva, tipo_operacion)
   VALUES (OLD.id, OLD.usuario_id, OLD.monto, NEW.monto, OLD.descripcion, NEW.descripcion, 'UPDATE');

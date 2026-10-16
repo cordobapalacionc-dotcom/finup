@@ -28,6 +28,18 @@ if (!db.prepare('PRAGMA table_info(reportes)').all().some((c) => c.name === 'dat
 if (!db.prepare('PRAGMA table_info(transacciones)').all().some((c) => c.name === 'meta_id')) {
     db.exec('ALTER TABLE transacciones ADD COLUMN meta_id INTEGER');
 }
+// Bases creadas antes de poder quitar gastos del reporte por categoría
+if (!db.prepare('PRAGMA table_info(transacciones)').all().some((c) => c.name === 'oculto_reporte')) {
+    db.exec('ALTER TABLE transacciones ADD COLUMN oculto_reporte INTEGER NOT NULL DEFAULT 0');
+    // El historial solo debe registrar cambios de monto o descripción (no el ocultar del reporte)
+    db.exec(`DROP TRIGGER IF EXISTS tg_historial_update;
+        CREATE TRIGGER tg_historial_update AFTER UPDATE ON transacciones
+        WHEN OLD.monto IS NOT NEW.monto OR OLD.descripcion IS NOT NEW.descripcion
+        BEGIN
+          INSERT INTO historial_cambios (transaccion_id, usuario_id, monto_anterior, monto_nuevo, descripcion_anterior, descripcion_nueva, tipo_operacion)
+          VALUES (OLD.id, OLD.usuario_id, OLD.monto, NEW.monto, OLD.descripcion, NEW.descripcion, 'UPDATE');
+        END;`);
+}
 console.log('✅ Conectado a SQLite:', DB_PATH);
 
 // Como mysql2: los campos que no llegan (undefined) se guardan como NULL
@@ -541,13 +553,14 @@ app.get(['/api/admin/gastos-categoria', '/api/reportes/gastos-categoria'], (req,
     res.json(prepare(`
         SELECT c.id, c.nombre, IFNULL(SUM(t.monto), 0) AS monto
         FROM categorias c
-        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' AND t.usuario_id = ? ${condicionDias}
+        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' AND t.oculto_reporte = 0 AND t.usuario_id = ? ${condicionDias}
         WHERE c.tipo = 'gasto'
         GROUP BY c.id ORDER BY monto DESC`).all(...params));
 });
 
-// Borra los gastos propios de una categoría (opcionalmente solo los de los últimos ?dias=N). El dinero vuelve al saldo.
-// Los abonos a metas no se borran aquí: se sacan desde la meta para que su ahorro siga cuadrando.
+// Quita del reporte "Gastos por categoría" los gastos propios de una categoría (opcionalmente solo los de los últimos ?dias=N).
+// No borra los movimientos: el dinero gastado sigue descontado del saldo y los gastos siguen en el historial.
+// Los abonos a metas no se quitan aquí: se sacan desde la meta.
 app.delete(['/api/admin/gastos-categoria/:id', '/api/reportes/gastos-categoria/:id'], (req, res) => {
     const categoria = prepare(`SELECT * FROM categorias WHERE id = ? AND tipo = 'gasto'`).get(req.params.id);
     if (!categoria) return noEncontrado(res);
@@ -557,13 +570,13 @@ app.delete(['/api/admin/gastos-categoria/:id', '/api/reportes/gastos-categoria/:
     const dias = parseInt(req.query.dias, 10);
     const condicionDias = dias > 0 ? `AND date(fecha) > date('now','localtime', ?)` : '';
     const params = dias > 0 ? [req.usuario.id, categoria.id, `-${dias} days`] : [req.usuario.id, categoria.id];
-    const filtro = `FROM transacciones WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND meta_id IS NULL ${condicionDias}`;
+    const filtro = `transacciones WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND meta_id IS NULL AND oculto_reporte = 0 ${condicionDias}`;
     const resultado = enTransaccion(() => {
-        const { cantidad, monto } = prepare(`SELECT COUNT(*) AS cantidad, IFNULL(SUM(monto), 0) AS monto ${filtro}`).get(...params);
-        prepare(`DELETE ${filtro}`).run(...params);
-        return { borrados: cantidad, monto };
+        const { cantidad, monto } = prepare(`SELECT COUNT(*) AS cantidad, IFNULL(SUM(monto), 0) AS monto FROM ${filtro}`).get(...params);
+        prepare(`UPDATE ${filtro.replace('transacciones WHERE', 'transacciones SET oculto_reporte = 1 WHERE')}`).run(...params);
+        return { quitados: cantidad, monto };
     });
-    res.json({ mensaje: "Gastos eliminados", ...resultado, saldo: saldoDe(req.usuario.id) });
+    res.json({ mensaje: "Gastos quitados del reporte", ...resultado, saldo: saldoDe(req.usuario.id) });
 });
 
 app.get('/api/admin/transacciones', (req, res) => {
