@@ -268,6 +268,7 @@ const sesion = obtenerSesion();
 const menuItems = ref([
   { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio' },
   { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios' },
+  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
   { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas' },
   { text: 'Reportes', icon: '📊', routeName: 'admin-reportes' },
   { text: 'Metas', icon: '🎯', routeName: 'admin-metas' },

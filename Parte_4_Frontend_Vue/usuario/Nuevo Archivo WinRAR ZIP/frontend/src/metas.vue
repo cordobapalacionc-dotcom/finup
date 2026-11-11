@@ -11,14 +11,16 @@
         <button class="btn" @click="abrirModalMeta()">+ Nueva Meta</button>
       </header>
 
+      <p v-if="aviso" class="aviso-meta">{{ aviso }}</p>
+
       <section class="goals">
         <div v-if="metas.length === 0" class="no-data">No tienes metas creadas.</div>
-        
+
         <div v-for="(meta, index) in metas" :key="'meta-'+index" class="goal-card-container">
           <div class="goal-card">
             <div class="goal-info">
               <h3>✨ {{ meta.nombre }}</h3>
-              <p>Meta personal</p>
+              <p>Fecha límite: {{ fechaCorta(meta.fecha_limite) }}</p>
             </div>
             <div class="goal-progress-container">
               <div class="progress-wrapper">
@@ -41,13 +43,13 @@
           </div>
           <div style="padding-left: 20px; color: #5778a4;" class="goal-analysis" v-if="calcularPorcentaje(meta) < 100">
             <p>
-              💡 <b>Análisis a 6 meses:</b> Te faltan ${{ (meta.monto - (meta.ahorro || 0)).toLocaleString() }}. 
+              💡 <b>Análisis a 6 meses:</b> Te faltan ${{ (meta.monto - (meta.ahorro || 0)).toLocaleString() }}.
               Para lograrlo en 6 meses, necesitas ahorrar <b>${{ Math.ceil((meta.monto - (meta.ahorro || 0)) / 6).toLocaleString() }}</b> al mes.
               <br>
               <span :class="(meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000) ? 'alerta' : 'bien'">
-                {{ (meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000) 
-                    ? `⚠️ Te faltan $${(Math.ceil((meta.monto - (meta.ahorro || 0)) / 6) - (usuario.ahorroMensual || 120000)).toLocaleString()} adicionales por mes.` 
-                    : '✅ Tu ahorro actual es suficiente para cumplir el plazo.' 
+                {{ (meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000)
+                    ? `⚠️ Te faltan $${(Math.ceil((meta.monto - (meta.ahorro || 0)) / 6) - (usuario.ahorroMensual || 120000)).toLocaleString()} adicionales por mes.`
+                    : '✅ Tu ahorro actual es suficiente para cumplir el plazo.'
                 }}
               </span>
             </p>
@@ -65,10 +67,10 @@
 
       <section class="budgets-grid">
         <div v-if="presupuestos.length === 0" class="no-data" style="grid-column: span 2;">No hay presupuestos.</div>
-        
+
         <div v-for="(pre, index) in presupuestos" :key="'pre-'+index" class="card budget-card" :class="{ 'border-rojo': pre.gastado > pre.limite }">
           <div class="budget-header">
-            <h3>{{ pre.icono }} {{ pre.categoria }}</h3>
+            <h3>{{ pre.icono }} {{ pre.categoria }} <small class="periodo">{{ pre.periodo }}</small></h3>
             <div class="actions">
               <button @click="abrirModalPresupuesto(index)" class="btn-mini">✏️</button>
               <button @click="eliminarPresupuesto(index)" class="btn-mini">🗑️</button>
@@ -79,13 +81,13 @@
             <span class="total"> / ${{ pre.limite.toLocaleString() }}</span>
           </div>
           <div class="progress-bar-bg">
-            <div class="progress-fill" 
-                 :class="getClasePresupuesto(pre.gastado, pre.limite)" 
+            <div class="progress-fill"
+                 :class="getClasePresupuesto(pre.gastado, pre.limite)"
                  :style="{ width: Math.min(((pre.gastado || 0) / pre.limite) * 100, 100) + '%' }">
             </div>
           </div>
           <p>
-            {{ pre.gastado > pre.limite ? '❌ Límite superado' : (pre.gastado > pre.limite * 0.8 ? '⚠️ Casi al límite' : '✅ En control') }}
+            {{ pre.gastado > pre.limite ? '❌ Límite superado por $' + (pre.gastado - pre.limite).toLocaleString() : (pre.gastado > pre.limite * 0.8 ? '⚠️ Casi al límite' : '✅ En control') }}
           </p>
         </div>
       </section>
@@ -106,12 +108,16 @@
     <div v-if="modal.activo" class="modal-overlay" @click.self="cerrarModal">
       <div class="modal-content">
         <h2>{{ modal.titulo }}</h2>
-        
+
         <div v-if="modal.tipo === 'meta'">
           <div class="input-group"><label>Nombre</label><input v-model="nuevaMeta.nombre" type="text"></div>
           <div class="input-group">
             <label>Monto Objetivo ($)</label>
             <input v-model.number="nuevaMeta.monto" type="number" min="0" @keydown="bloquearNegativos">
+          </div>
+          <div class="input-group">
+            <label>Fecha límite</label>
+            <input v-model="nuevaMeta.fecha_limite" type="date" :min="hoy">
           </div>
           <div class="input-group" v-if="modal.editandoIndex !== null">
             <label>Ahorro Actual ($)</label>
@@ -162,13 +168,18 @@
             </select>
           </div>
           <div class="input-group">
-            <label>Límite Mensual ($)</label>
-            <input v-model.number="nuevoPresupuesto.limite" type="number" min="0" @keydown="bloquearNegativos" placeholder="Ej: 500000">
+            <label>Periodo</label>
+            <select v-model="nuevoPresupuesto.periodo" class="modal-select">
+              <option value="mensual">Mensual</option>
+              <option value="semanal">Semanal</option>
+            </select>
           </div>
           <div class="input-group">
-            <label>Gasto Real Actual ($)</label>
-            <input v-model.number="nuevoPresupuesto.gastado" type="number" min="0" @keydown="bloquearNegativos">
+            <label>Límite {{ nuevoPresupuesto.periodo === 'semanal' ? 'semanal' : 'mensual' }} ($)</label>
+            <input v-model.number="nuevoPresupuesto.limite" type="number" min="0" @keydown="bloquearNegativos" placeholder="Ej: 500000">
           </div>
+          <small class="ayuda-ahorro">Lo gastado se calcula solo con tus movimientos del periodo.</small>
+          <p v-if="errorPresupuesto" class="abono-error">{{ errorPresupuesto }}</p>
         </div>
 
         <div class="modal-actions">
@@ -185,6 +196,7 @@ import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { categoriasGasto, etiquetaCategoria, cargarCategorias } from './categorias';
+import { fechaCorta } from './api';
 
 cargarCategorias();
 
@@ -196,8 +208,15 @@ const metas = ref([]);
 const presupuestos = ref([]);
 
 const modal = ref({ activo: false, tipo: 'meta', titulo: '', editandoIndex: null });
-const nuevaMeta = ref({ id: null, nombre: '', monto: 0, ahorro: 0 }); 
-const nuevoPresupuesto = ref({ id: null, categoria_id: 3, limite: 0, gastado: 0 }); 
+const hoy = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD en hora local
+const nuevaMeta = ref({ id: null, nombre: '', monto: 0, ahorro: 0, fecha_limite: '' });
+const nuevoPresupuesto = ref({ id: null, categoria_id: 3, limite: 0, periodo: 'mensual' });
+const errorPresupuesto = ref('');
+const aviso = ref('');
+const avisar = (texto) => {
+  aviso.value = texto;
+  setTimeout(() => { if (aviso.value === texto) aviso.value = ''; }, 5000);
+};
 
 // LÓGICA DE BLOQUEO: Evita que el usuario presione el signo menos o la letra e (notación científica)
 const bloquearNegativos = (e) => {
@@ -215,7 +234,8 @@ const cargarDatos = async () => {
       id: m.id,
       nombre: m.nombre,
       monto: parseFloat(m.monto_objetivo) || 0,
-      ahorro: parseFloat(m.monto_actual) || 0
+      ahorro: parseFloat(m.monto_actual) || 0,
+      fecha_limite: m.fecha_limite
     }));
 
     const resPre = await fetch(`${API_URL}/presupuestos/${usuario.value.id}`);
@@ -225,26 +245,35 @@ const cargarDatos = async () => {
       categoria: p.categoria_nombre,
       categoria_id: p.categoria_id,
       limite: parseFloat(p.monto_limite) || 0,
-      gastado: parseFloat(p.monto_actual || 0),
+      gastado: parseFloat(p.acumulado ?? p.monto_actual ?? 0),
+      periodo: p.periodo,
       icono: '💰'
     }));
-  } catch (e) { 
-    console.error("Error al cargar:", e); 
+  } catch (e) {
+    console.error("Error al cargar:", e);
   }
 };
 
 const guardarMeta = async () => {
-  if (nuevaMeta.value.monto < 0 || nuevaMeta.value.ahorro < 0) {
-      return;
-  }
+  errorMeta.value = '';
+  // 2a: monto objetivo no válido o fecha límite que ya pasó
+  if (!nuevaMeta.value.nombre.trim()) { errorMeta.value = 'Escribe un nombre para la meta'; return; }
+  if (!(nuevaMeta.value.monto > 0)) { errorMeta.value = 'El monto objetivo debe ser mayor que 0'; return; }
+  if (nuevaMeta.value.ahorro < 0) { errorMeta.value = 'El ahorro no puede ser negativo'; return; }
   const esEdicion = modal.value.editandoIndex !== null;
+  const fechaOriginal = esEdicion ? String(metas.value[modal.value.editandoIndex].fecha_limite || '').slice(0, 10) : '';
+  if (!nuevaMeta.value.fecha_limite) { errorMeta.value = 'Elige la fecha límite'; return; }
+  if (nuevaMeta.value.fecha_limite < hoy && nuevaMeta.value.fecha_limite !== fechaOriginal) {
+    errorMeta.value = 'La fecha límite ya pasó';
+    return;
+  }
   const payload = {
     id: esEdicion ? metas.value[modal.value.editandoIndex].id : null,
     usuario_id: usuario.value.id,
     nombre: nuevaMeta.value.nombre,
     monto_objetivo: Number(nuevaMeta.value.monto),
     monto_actual: Number(nuevaMeta.value.ahorro),
-    fecha_limite: new Date().toISOString().split('T')[0] 
+    fecha_limite: nuevaMeta.value.fecha_limite
   };
 
   try {
@@ -256,6 +285,7 @@ const guardarMeta = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
+      avisar(esEdicion ? '✅ Meta actualizada' : '✅ Meta creada');
     } else {
       errorMeta.value = (await res.json()).error || 'No se pudo guardar la meta';
     }
@@ -263,23 +293,30 @@ const guardarMeta = async () => {
 };
 
 const eliminarMeta = async (index) => {
-  const idMeta = metas.value[index].id;
+  const meta = metas.value[index];
+  const confirmado = window.confirm(meta.ahorro > 0
+    ? '¿Eliminar la meta "' + meta.nombre + '"? Los $' + meta.ahorro.toLocaleString() + ' ahorrados vuelven a tu saldo.'
+    : '¿Eliminar la meta "' + meta.nombre + '"?');
+  if (!confirmado) return;
+  const idMeta = meta.id;
   await fetch(`${API_URL}/metas/${idMeta}`, { method: 'DELETE' });
   await cargarDatos();
 };
 
 const guardarPresupuesto = async () => {
-  if (nuevoPresupuesto.value.limite < 0 || nuevoPresupuesto.value.gastado < 0) {
-      return;
+  errorPresupuesto.value = '';
+  // 5a: monto menor o igual a cero
+  if (!(nuevoPresupuesto.value.limite > 0)) {
+    errorPresupuesto.value = 'Monto inválido: el límite debe ser mayor que 0';
+    return;
   }
   const esEdicion = modal.value.editandoIndex !== null;
   const payload = {
     id: esEdicion ? presupuestos.value[modal.value.editandoIndex].id : null,
     usuario_id: usuario.value.id,
-    categoria_id: parseInt(nuevoPresupuesto.value.categoria_id) || 3, 
-    monto_actual: parseFloat(nuevoPresupuesto.value.gastado) || 0,
+    categoria_id: parseInt(nuevoPresupuesto.value.categoria_id) || 3,
     monto_limite: parseFloat(nuevoPresupuesto.value.limite) || 0,
-    periodo: 'mensual'
+    periodo: nuevoPresupuesto.value.periodo || 'mensual'
   };
 
   try {
@@ -291,6 +328,9 @@ const guardarPresupuesto = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
+      avisar('✅ Presupuesto guardado');
+    } else {
+      errorPresupuesto.value = (await res.json()).error || 'No se pudo guardar el presupuesto';
     }
   } catch (e) { console.error(e); }
 };
@@ -308,19 +348,20 @@ const abrirModalMeta = (index = null) => {
   modal.value = { activo: true, tipo: 'meta', titulo: index !== null ? '✏️ Editar Meta' : '🎯 Nueva Meta', editandoIndex: index };
   if (index !== null) {
     const m = metas.value[index];
-    nuevaMeta.value = { id: m.id, nombre: m.nombre, monto: m.monto, ahorro: m.ahorro };
+    nuevaMeta.value = { id: m.id, nombre: m.nombre, monto: m.monto, ahorro: m.ahorro, fecha_limite: String(m.fecha_limite || '').slice(0, 10) };
   } else {
-    nuevaMeta.value = { id: null, nombre: '', monto: 0, ahorro: 0 };
+    nuevaMeta.value = { id: null, nombre: '', monto: 0, ahorro: 0, fecha_limite: '' };
   }
 };
 
 const abrirModalPresupuesto = (index = null) => {
+  errorPresupuesto.value = '';
   modal.value = { activo: true, tipo: 'presupuesto', titulo: index !== null ? '✏️ Editar Presupuesto' : '📊 Nuevo Presupuesto', editandoIndex: index };
   if (index !== null) {
     const p = presupuestos.value[index];
-    nuevoPresupuesto.value = { id: p.id, limite: p.limite, categoria_id: p.categoria_id, gastado: p.gastado };
+    nuevoPresupuesto.value = { id: p.id, limite: p.limite, categoria_id: p.categoria_id, periodo: p.periodo || 'mensual' };
   } else {
-    nuevoPresupuesto.value = { id: null, limite: 0, categoria_id: 3, gastado: 0 };
+    nuevoPresupuesto.value = { id: null, limite: 0, categoria_id: categoriasGasto.value[0]?.id || 3, periodo: 'mensual' };
   }
 };
 
@@ -363,6 +404,8 @@ const guardarAbono = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
+      // 4a: los aportes alcanzaron el monto objetivo
+      avisar(data.cumplida ? '🎉 ' + data.mensaje : '✅ Abono registrado');
     } else {
       errorAbono.value = data.error || 'No se pudo registrar el abono';
       if (typeof data.saldo === 'number') saldoDisponible.value = data.saldo;
@@ -539,4 +582,6 @@ onMounted(() => {
   width: 100%;
 }
 .btn-completar:hover { background: rgba(45, 187, 115, 0.08); }
+.aviso-meta { background: #f0fff4; border: 1px solid #9ae6b4; color: #1a8a4a; padding: 12px 18px; border-radius: 14px; margin: 0 0 20px; font-weight: 600; }
+.periodo { font-size: 0.7rem; font-weight: 600; color: #718096; background: #edf2f7; padding: 2px 8px; border-radius: 999px; text-transform: capitalize; margin-left: 6px; }
 </style>

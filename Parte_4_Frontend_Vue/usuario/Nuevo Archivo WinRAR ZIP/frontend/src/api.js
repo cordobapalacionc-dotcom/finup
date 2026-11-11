@@ -12,6 +12,31 @@ export const obtenerSesion = () => {
   }
 }
 
+// Mensajes que se muestran en el login cuando la sesión termina sola
+const AVISOS = {
+  expirada: 'Tu sesión ha caducado. Inicia sesión de nuevo.',
+  inactividad: 'Tu sesión se cerró por inactividad. Inicia sesión de nuevo.',
+  desactivada: 'Tu cuenta está desactivada. Comunícate con el administrador.'
+}
+
+// Borra la sesión local, guarda el aviso para el login y vuelve a la pantalla de inicio de sesión
+export const terminarSesion = (motivo) => {
+  localStorage.removeItem(CLAVE_SESION)
+  try { sessionStorage.setItem('aviso_sesion', AVISOS[motivo] || AVISOS.expirada) } catch { /* sin almacenamiento */ }
+  if (window.location.pathname !== '/') window.location.href = '/'
+}
+
+// Lee (y borra) el aviso guardado por terminarSesion()
+export const leerAvisoSesion = () => {
+  try {
+    const aviso = sessionStorage.getItem('aviso_sesion')
+    sessionStorage.removeItem('aviso_sesion')
+    return aviso || ''
+  } catch {
+    return ''
+  }
+}
+
 const fetchOriginal = window.fetch.bind(window)
 
 window.fetch = async (recurso, opciones = {}) => {
@@ -24,11 +49,9 @@ window.fetch = async (recurso, opciones = {}) => {
 
   const respuesta = await fetchOriginal(recurso, { ...opciones, headers })
 
-  // Sesión caducada o inválida: volver al login
-  if (respuesta.headers.get('X-Sesion') === 'expirada') {
-    localStorage.removeItem(CLAVE_SESION)
-    if (window.location.pathname !== '/') window.location.href = '/'
-  }
+  // Sesión caducada, cerrada por inactividad o cuenta desactivada: volver al login con el aviso
+  const motivo = respuesta.headers.get('X-Sesion')
+  if (motivo) terminarSesion(motivo)
   return respuesta
 }
 

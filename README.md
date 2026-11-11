@@ -32,9 +32,10 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | Sección | Qué permite |
 |---|---|
 | **Página principal** | Resumen de ingresos, gastos y saldo, metas activas y pagos recurrentes con su progreso. |
-| **Gastos e Ingresos** | Registrar, editar y eliminar movimientos por categoría, con gráfica semanal. |
-| **Metas** | Crear metas de ahorro, **abonarles dinero de tu saldo** (o completarlas de un clic), **sacar el dinero de una meta cumplida** de vuelta al saldo y definir presupuestos por categoría. |
-| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gráfica, gasto por categoría (con opción de **quitar los gastos de una categoría** del reporte; el dinero gastado no vuelve al saldo) y reportes guardados que se pueden desplegar y borrar. |
+| **Gastos e Ingresos** | Registrar movimientos con **fecha**, categoría y monto; historial con **filtros por fecha, tipo y categoría**, detalle de cada movimiento, edición y eliminación con confirmación. Si un gasto **supera el presupuesto** de su categoría, aparece un aviso con lo gastado y el exceso. |
+| **Categorías** | Ver las categorías generales y **crear, editar, desactivar y eliminar categorías propias** (sin nombres repetidos). |
+| **Metas** | Crear metas de ahorro con **fecha límite**, **abonarles dinero de tu saldo** (o completarlas de un clic, con aviso de meta cumplida), **sacar el dinero de una meta cumplida** de vuelta al saldo y definir presupuestos **mensuales o semanales** por categoría (lo gastado se calcula solo). |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días, **un mes** o **un año**), gráfica, gasto por categoría (con opción de **quitar los gastos de una categoría** del reporte; el dinero gastado no vuelve al saldo), reportes guardados y **exportación a PDF o Excel**. |
 | **Pagos recurrentes** | Programar pagos (luz, arriendo, etc.) y registrar abonos hasta completarlos. |
 | **Configuración** | Cambiar nombre, correo y contraseña, y elegir **tema claro u oscuro**. |
 
@@ -43,9 +44,10 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | Sección | Qué permite |
 |---|---|
 | **Inicio** | Total de usuarios y sus propios ingresos, gastos y ahorro, con la variación frente al mes anterior y gráfica de la última semana. |
-| **Usuarios** | Buscar, crear, editar (incluida la contraseña) y eliminar usuarios. |
+| **Usuarios** | Buscar (por nombre, correo o ID), crear, editar (incluida la contraseña), **activar o desactivar cuentas** y eliminar usuarios. Una cuenta desactivada no puede iniciar sesión. |
+| **Categorías** | Catálogo de **categorías generales** que ven todos los usuarios: crear, editar (nombre, tipo y descripción), activar/desactivar y eliminar las que no se usan. |
 | **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. |
-| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría (se pueden **quitar los gastos de una categoría** del reporte) y **reportes guardados** que se pueden desplegar y borrar. |
+| **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría (se pueden **quitar los gastos de una categoría** del reporte), **reportes guardados** que se pueden desplegar y borrar, y **exportación a PDF o Excel**. |
 | **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, **sacar dinero** cuando está cumplida, editar y eliminar). |
 
 ---
@@ -142,6 +144,7 @@ El backend funciona sin configurar nada. Si lo necesitas, acepta:
 |---|---|---|
 | `PORT` | `3000` | Puerto del backend. |
 | `DB_PATH` | `finanzas_app.db` (junto a `package.json`) | Ruta del archivo de la base de datos. |
+| `MINUTOS_INACTIVIDAD` | `30` | Minutos sin actividad tras los que se cierra la sesión. (El frontend también la cierra a los 30 minutos: `src/inactividad.js`.) |
 
 > Si cambias el puerto del backend, actualiza también `API_URL` en `frontend/src/api.js`.
 
@@ -167,15 +170,15 @@ La base es un archivo SQLite (`finanzas_app.db`) que el backend crea automática
 
 | Tabla | Contenido |
 |---|---|
-| `usuarios` | Cuentas, rol (`admin` / `usuario`) y estado de conexión. |
-| `sesiones` | Tokens de sesión (guardados como hash) y su caducidad. |
-| `categorias` | Categorías de ingreso y de gasto. |
+| `usuarios` | Cuentas, rol (`admin` / `usuario`) y estado de la cuenta (`activo` = puede entrar, `inactivo` = desactivada por el administrador). |
+| `sesiones` | Tokens de sesión (guardados como hash), su caducidad y la última actividad (para cerrarla por inactividad). |
+| `categorias` | Categorías de ingreso y de gasto, con descripción y estado (`activa` / `inactiva`). `usuario_id` vacío = categoría general; con valor = categoría propia de ese usuario. |
 | `transacciones` | Ingresos y gastos de cada usuario. Los aportes a metas llevan `meta_id`; `oculto_reporte = 1` marca los gastos quitados del reporte por categoría (siguen contando en el saldo). |
 | `historial_cambios` | Registro automático (triggers) de cada movimiento editado o eliminado. |
 | `metas` | Metas de ahorro: objetivo, ahorro actual y fecha límite. |
 | `presupuestos` | Límites de gasto por categoría (mensuales o semanales). |
 | `transacciones_recurrentes` | Pagos periódicos y lo abonado. |
-| `reportes` | Reportes guardados por el administrador, con una foto de los datos en JSON. |
+| `reportes` | Reportes guardados por cada cuenta, con una foto de los datos en JSON. (El reporte financiero en sí se calcula al consultarlo; esta tabla solo guarda las fotos que el usuario decide conservar.) |
 
 **El ahorro de las metas sale del saldo.** Cada aporte (abono, ahorro inicial o subir el ahorro con el lápiz) se registra como gasto de la categoría *Ahorro para metas* vinculado a su meta. Al bajar el ahorro o eliminar la meta, esos aportes se reducen o se borran y el dinero vuelve al saldo. Nunca se puede aportar más del saldo disponible.
 
@@ -183,7 +186,11 @@ La base es un archivo SQLite (`finanzas_app.db`) que el backend crea automática
 
 - **Ingresos:** Sueldo, Freelance, Otros ingresos
 - **Gastos:** Alimentación, Transporte, Entretenimiento, Servicios, Salud, Educación, Otros gastos
-- **Automática:** Ahorro para metas (se asigna sola al abonar a una meta; no aparece en los formularios)
+- **Automática:** Ahorro para metas (se asigna sola al abonar a una meta; no aparece en los formularios y no se puede modificar)
+
+Cada usuario puede añadir sus propias categorías y el administrador puede ampliar las generales. Una categoría con movimientos o presupuestos no se elimina: se **desactiva** (deja de ofrecerse en los formularios, pero sus movimientos se conservan).
+
+**Bases antiguas.** Al arrancar, el backend añade solo las columnas nuevas (`categorias.descripcion`, `estado`, `usuario_id` y `sesiones.ultima_actividad`) y deja **activas** todas las cuentas que existían (antes `estado` significaba "conectado").
 
 Para **empezar de cero**, detén el backend, borra `finanzas_app.db` y vuelve a arrancarlo. ⚠️ Se pierden todos los datos.
 
@@ -204,11 +211,15 @@ El token se obtiene al iniciar sesión. El frontend lo añade solo a cada petici
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/login` | Inicia sesión. Devuelve los datos del usuario y su `token`. |
-| `POST` | `/registrar` | Crea una cuenta de usuario. |
+| `POST` | `/login` | Inicia sesión. Devuelve los datos del usuario y su `token`. Rechaza las cuentas desactivadas (403). |
+| `POST` | `/registrar` | Crea una cuenta de usuario. Valida el correo, la contraseña (mínimo 8 caracteres, una letra y un número), la confirmación (`confirmacion`) y que el correo no exista (409). |
 | `POST` | `/logout` | Cierra la sesión e invalida el token. |
 | `PUT` | `/usuario/actualizar/:id` | Cambia nombre, correo y contraseña (pide la contraseña actual). |
-| `GET` | `/categorias` | Lista de categorías. |
+| `GET` | `/categorias` | Categorías generales y propias (activas e inactivas), con su número de movimientos. |
+| `POST` | `/categorias` | Crea una categoría propia (`nombre`, `tipo`, `descripcion`). Rechaza nombres repetidos (409). |
+| `PUT` | `/categorias/:id` | Edita una categoría propia. |
+| `PUT` | `/categorias/:id/estado` | Activa o desactiva una categoría propia (`estado`: `activa` / `inactiva`). |
+| `DELETE` | `/categorias/:id` | Elimina una categoría propia sin movimientos ni presupuestos. |
 
 </details>
 
@@ -221,16 +232,16 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 |---|---|---|
 | `GET` | `/resumen/:usuario_id` | Totales de ingresos y gastos. |
 | `GET` | `/movimientos/:usuario_id` | Lista de movimientos. |
-| `POST` | `/movimientos` | Crea un movimiento. |
-| `PUT` | `/movimientos/:id` | Edita un movimiento. |
+| `POST` | `/movimientos` | Crea un movimiento (`tipo`, `monto` > 0, `categoria_id`, `fecha` opcional `AAAA-MM-DD`, no futura). Si es un gasto que supera un presupuesto, devuelve `alertas` con lo acumulado, el límite y el exceso. |
+| `PUT` | `/movimientos/:id` | Edita un movimiento (mismas validaciones y `alertas`). |
 | `DELETE` | `/movimientos/:id` | Elimina un movimiento. |
 | `GET` | `/metas/:usuario_id` | Lista de metas. |
 | `POST` | `/metas` | Crea una meta, o la edita si se envía `id`. Si cambia el ahorro, la diferencia se descuenta del saldo o vuelve a él. |
 | `POST` | `/metas/:id/abonar` | Pasa dinero (`monto`) del saldo a una meta propia: lo registra como gasto de la categoría *Ahorro para metas* y lo rechaza si no hay saldo suficiente. También lo usa el administrador. |
 | `POST` | `/metas/:id/retirar` | Saca dinero (`monto`) de una meta propia **ya cumplida** y lo devuelve al saldo (reduce sus abonos, del más reciente al más antiguo). No permite sacar más de lo ahorrado. También lo usa el administrador. |
 | `DELETE` | `/metas/:id` | Elimina una meta y devuelve al saldo todo lo que se le había aportado. |
-| `GET` | `/presupuestos/:usuario_id` | Lista de presupuestos. |
-| `POST` | `/presupuestos` | Crea un presupuesto, o lo edita si se envía `id`. |
+| `GET` | `/presupuestos/:usuario_id` | Presupuestos con lo gastado en el periodo actual (`acumulado`), `excedido`, `exceso` y `porcentaje`. |
+| `POST` | `/presupuestos` | Crea un presupuesto, o lo edita si se envía `id`. El límite debe ser mayor que 0 y no puede haber dos del mismo periodo para la misma categoría. |
 | `DELETE` | `/presupuestos/:id` | Elimina un presupuesto. |
 | `GET` | `/recurrentes/:usuario_id` | Lista de pagos recurrentes. |
 | `POST` | `/recurrentes` | Crea un pago recurrente. |
@@ -245,9 +256,10 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/reportes/resumen` | Totales propios. Acepta `?dias=N`. |
-| `GET` | `/reportes/serie` | Ingresos y gastos propios agrupados (mismos parámetros que `/admin/serie`). |
-| `GET` | `/reportes/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`. |
+| `GET` | `/reportes/resumen` | Totales propios. Acepta `?dias=N`, `?mes=AAAA-MM` o `?anio=AAAA`. |
+| `GET` | `/reportes/serie` | Ingresos y gastos propios agrupados (mismos parámetros que `/admin/serie`, más `?mes=AAAA-MM` por días y `?anio=AAAA` por meses). |
+| `GET` | `/reportes/gastos-categoria` | Gasto propio por categoría. Acepta `?dias=N`, `?mes=AAAA-MM` o `?anio=AAAA`. |
+| `GET` | `/reportes/movimientos` | Movimientos propios del periodo (`?dias`, `?mes` o `?anio`), para exportar a PDF o Excel. |
 | `DELETE` | `/reportes/gastos-categoria/:id` | Quita del reporte por categoría los gastos propios de esa categoría (en los últimos `?dias=N`, si se indica). No borra los movimientos: el dinero gastado sigue descontado del saldo y los gastos siguen en el historial. Los abonos a metas no se quitan aquí. |
 | `GET` | `/reportes/guardados` | Reportes guardados propios. |
 | `POST` | `/reportes/guardados` | Guarda un reporte con sus datos. |
@@ -269,7 +281,13 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `GET` | `/admin/usuarios` | Lista de usuarios. |
 | `POST` | `/admin/usuarios` | Crea un usuario. |
 | `PUT` | `/admin/usuarios/:id` | Edita un usuario (rol y contraseña incluidos). |
+| `PUT` | `/admin/usuarios/:id/estado` | Activa o desactiva una cuenta (`estado`: `activo` / `inactivo`). Una cuenta desactivada no puede entrar y sus sesiones abiertas se cierran. |
 | `DELETE` | `/admin/usuarios/:id` | Elimina un usuario y todos sus datos. |
+| `GET` | `/admin/categorias` | Categorías generales (activas e inactivas). |
+| `POST` | `/admin/categorias` | Crea una categoría general. |
+| `PUT` | `/admin/categorias/:id` | Edita una categoría general. |
+| `PUT` | `/admin/categorias/:id/estado` | Activa o desactiva una categoría general. |
+| `DELETE` | `/admin/categorias/:id` | Elimina una categoría general que nadie usa. |
 | `GET` | `/admin/metas` | Metas propias. |
 | `POST` | `/admin/metas` | Crea una meta propia. |
 | `PUT` | `/admin/metas/:id` | Edita una meta. |
@@ -286,7 +304,8 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 
 ## 🔒 Seguridad
 
-- **Sesiones con token:** se generan al iniciar sesión, caducan a los 7 días y se invalidan al cerrar sesión. En la base solo se guarda su hash.
+- **Sesiones con token:** se generan al iniciar sesión, caducan a los 7 días, **se cierran tras 30 minutos sin actividad** y se invalidan al cerrar sesión. En la base solo se guarda su hash.
+- **Cuentas desactivadas:** el administrador puede desactivar una cuenta; no puede iniciar sesión y sus sesiones abiertas dejan de funcionar al instante.
 - **Aislamiento de datos:** el servidor comprueba en cada petición quién es el usuario. Nadie, ni siquiera el administrador, puede ver el dinero, las metas o los presupuestos de otra persona. El administrador solo gestiona las cuentas (crear, editar y eliminar usuarios).
 - **Control de rol en el servidor:** las rutas `/api/admin` rechazan a cualquier usuario que no sea administrador, aunque modifique su navegador.
 - **Contraseñas con `scrypt` y sal.** Las contraseñas antiguas en SHA-256 se actualizan solas al iniciar sesión.
@@ -302,7 +321,8 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 | `Error: listen EADDRINUSE :::3000` | Otro programa usa el puerto 3000. Ciérralo o arranca con otro `PORT`. |
 | El frontend no abre en el puerto 5180 | Otro programa lo está usando. Ciérralo o cambia el puerto en `iniciar.bat`. |
 | `No such built-in module: node:sqlite` | Tu versión de Node.js es antigua. Instala la 22.13 o superior. |
-| Me devuelve al inicio de sesión | Tu sesión caducó (7 días) o se cerró. Vuelve a entrar. |
+| Me devuelve al inicio de sesión | Tu sesión caducó (7 días), se cerró por inactividad (30 minutos) o tu cuenta fue desactivada. El inicio de sesión muestra el motivo. |
+| Los botones de PDF o Excel no funcionan | Faltan las dependencias nuevas del frontend. Ejecuta `npm install` en la carpeta `frontend` (o vuelve a abrir `iniciar.bat`). |
 | Olvidé la contraseña del administrador | Detén el backend y borra `finanzas_app.db`: se recrea con `admin@finanzas.com` / `Admin123`. ⚠️ Se pierden todos los datos. |
 
 ---
@@ -311,5 +331,4 @@ Cada usuario solo puede leer y modificar **sus propios** datos.
 
 - **`Parte_1_Interfaz_Usuario` y `Parte_2_Panel_Administrador`** son la versión antigua en HTML. No envían el token de sesión, así que **no funcionan con el backend actual**. La versión en uso es la de Vue.
 - **El tema oscuro** se consigue invirtiendo los colores de la página, así que algunos emojis y detalles cambian ligeramente de tono.
-- **La aplicación no muestra mensajes emergentes:** si algo falla (por ejemplo, un dato inválido), simplemente no se guarda. Solo el inicio de sesión muestra un aviso si los datos son incorrectos.
 - **Está pensada para uso local** (`localhost`). Para publicarla en internet faltaría configurar HTTPS y la dirección del backend.

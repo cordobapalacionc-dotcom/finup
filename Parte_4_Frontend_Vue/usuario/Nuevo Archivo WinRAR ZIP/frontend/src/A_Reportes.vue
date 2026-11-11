@@ -40,8 +40,11 @@
               <option value="90">Últimos 90 días</option>
               <option value="365">Último año</option>
             </select>
+            <button class="btn-exportar" :disabled="exportando" @click="exportar('pdf')">⬇️ PDF</button>
+            <button class="btn-exportar" :disabled="exportando" @click="exportar('excel')">⬇️ Excel</button>
           </div>
         </header>
+        <p v-if="errorExportar" class="error-exportar">{{ errorExportar }}</p>
 
         <!-- CARDS ESTADÍSTICAS -->
         <section class="stats-cards">
@@ -227,6 +230,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { api, moneda, fechaCorta, obtenerSesion } from './api';
+import { exportarReporte } from './exportarReporte';
 
 const sesion = obtenerSesion();
 
@@ -236,6 +240,7 @@ const periodoSeleccionado = ref("30");
 const menuItems = ref([
   { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
   { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
   { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
   { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
   { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
@@ -321,6 +326,33 @@ const cargarDatos = async () => {
   }
 };
 onMounted(cargarDatos);
+
+// --- EXPORTAR (PDF / Excel) ---
+const exportando = ref(false);
+const errorExportar = ref('');
+const exportar = async (formato) => {
+  errorExportar.value = '';
+  exportando.value = true;
+  try {
+    const movimientos = await api(`/reportes/movimientos?dias=${periodoSeleccionado.value}`);
+    const r = resumen.value || { ingresos: 0, gastos: 0, transacciones: 0 };
+    await exportarReporte(formato, {
+      titulo: 'Reporte financiero · FinUp',
+      periodo: NOMBRE_PERIODO[periodoSeleccionado.value],
+      usuario: sesion?.nombre,
+      ingresos: r.ingresos,
+      gastos: r.gastos,
+      transacciones: r.transacciones,
+      categorias: categorias.value.filter(c => c.monto > 0).map(c => ({ nombre: c.nombre, monto: c.monto, porcentaje: c.porcentaje })),
+      serie: serie.value,
+      movimientos
+    });
+  } catch (e) {
+    errorExportar.value = e.message;
+  } finally {
+    exportando.value = false;
+  }
+};
 
 // --- BORRAR LOS GASTOS DE UNA CATEGORÍA ---
 // Primer clic: pide confirmación en la misma fila. "Sí, borrar" los quita del reporte (no vuelven al saldo).
@@ -2551,4 +2583,7 @@ tr:hover {
 .btn-confirmar-si { background: #e53e3e; color: white; }
 .btn-confirmar-si:hover { background: #c53030; }
 .error-categoria { font-size: 13px; color: #e53e3e; margin: 0 0 10px; }
+.btn-exportar { margin-left: 8px; background: #2dbb73; color: white; border: none; padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; font-family: inherit; }
+.btn-exportar:disabled { opacity: 0.6; cursor: wait; }
+.error-exportar { color: #e53e3e; margin: 0 0 16px; }
 </style>

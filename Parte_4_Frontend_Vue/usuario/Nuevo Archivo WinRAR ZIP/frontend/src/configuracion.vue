@@ -23,6 +23,7 @@
             <label>Correo Electrónico</label>
             <input type="email" v-model="perfil.correo" placeholder="correo@ejemplo.com">
           </div>
+          <p v-if="aviso.texto" :class="['aviso-config', aviso.tipo]">{{ aviso.texto }}</p>
           <button class="btn-save" @click="guardarCambios">Guardar Cambios</button>
         </div>
         
@@ -45,6 +46,7 @@
               La nueva contraseña no puede ser igual a la actual.
             </small>
           </div>
+          <p v-if="aviso.texto" :class="['aviso-config', aviso.tipo]">{{ aviso.texto }}</p>
           <button class="btn-save security" @click="guardarCambios">Actualizar Contraseña</button>
         </div>
 
@@ -108,22 +110,26 @@ onMounted(() => {
 });
 
 // FUNCIÓN PRINCIPAL: GUARDA EN DB NOMBRE, CORREO Y/O CONTRASEÑA
+const aviso = ref({ texto: '', tipo: '' });
+const avisar = (texto, tipo = 'error') => { aviso.value = { texto, tipo }; };
+
 const guardarCambios = async () => {
+  avisar('');
   // 1. Validaciones básicas de campos obligatorios
   if (!perfil.value.nombre || !perfil.value.correo) {
-    return;
+    return avisar('Escribe tu nombre y tu correo');
+  }
+  if (!seguridad.value.actual) {
+    return avisar('Escribe tu contraseña actual para confirmar los cambios');
   }
 
   // 2. Lógica de Seguridad: Validaciones antes de enviar al servidor
   if (seguridad.value.nueva) {
-    if (!seguridad.value.actual) {
-      return;
-    }
     if (seguridad.value.nueva === seguridad.value.actual) {
-      return;
+      return avisar('La nueva contraseña debe ser distinta de la actual');
     }
     if (!passwordValida.value) {
-      return;
+      return avisar('La nueva contraseña debe tener al menos 8 caracteres, una letra y un número');
     }
   }
 
@@ -155,11 +161,14 @@ const guardarCambios = async () => {
       // Limpiar campos de seguridad tras éxito
       seguridad.value.actual = '';
       seguridad.value.nueva = '';
+      avisar(data.mensaje || 'Cambios guardados', 'exito');
     } else {
       // Aquí el servidor responderá si la contraseña actual fue incorrecta
+      avisar(data.error || 'No se pudieron guardar los cambios');
     }
   } catch (error) {
     console.error("Error en la petición:", error);
+    avisar('No se pudo conectar con el servidor');
   }
 };
 
@@ -325,4 +334,7 @@ input[type="checkbox"] {
 }
 .tema-muestra.claro { background: linear-gradient(90deg, #122326 25%, #f0f4f8 25%); }
 .tema-muestra.oscuro { background: linear-gradient(90deg, #122326 25%, #15191c 25%); }
+.aviso-config { padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; margin: 10px 0; }
+.aviso-config.error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+.aviso-config.exito { background: #f0fff4; color: #1a8a4a; border: 1px solid #9ae6b4; }
 </style>

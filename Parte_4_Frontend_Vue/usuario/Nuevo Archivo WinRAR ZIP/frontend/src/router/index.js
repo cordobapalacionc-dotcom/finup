@@ -7,6 +7,7 @@ import Gastos from '../gastos_ingresos.vue'
 import Configuracion from '../configuracion.vue'
 import Metas from '../metas.vue'
 import Reportes from '../reportes.vue'
+import Categorias from '../categorias.vue'
 
 // Vistas de Administrador
 import A_Inicio from '../A_inicio.vue'
@@ -14,6 +15,7 @@ import A_Usuarios from '../A_usuarios.vue'
 import A_Reportes from '../A_Reportes.vue'
 import A_metas from '../A_metas.vue'
 import A_finanzas from '../A_finanzas.vue'
+import A_categorias from '../A_categorias.vue'
 
 
 const router = createRouter({
@@ -61,6 +63,18 @@ const router = createRouter({
       name: 'reportes',
       component: Reportes,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/categorias',
+      name: 'categorias',
+      component: Categorias,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin-categorias',
+      name: 'admin-categorias',
+      component: A_categorias,
+      meta: { requiresAuth: true, role: 'admin' }
     },
     {
       path: '/admin-usuarios',

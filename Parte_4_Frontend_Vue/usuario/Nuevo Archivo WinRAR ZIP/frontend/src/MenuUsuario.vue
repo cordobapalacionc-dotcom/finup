@@ -10,6 +10,7 @@
     <nav class="menu">
       <router-link to="/inicio">Página Principal</router-link>
       <router-link to="/gastos">Gastos e Ingresos</router-link>
+      <router-link to="/categorias">Categorías</router-link>
       <router-link to="/metas">Metas</router-link>
       <router-link to="/reportes">Reportes</router-link>
       <router-link to="/configuracion">Configuración</router-link>

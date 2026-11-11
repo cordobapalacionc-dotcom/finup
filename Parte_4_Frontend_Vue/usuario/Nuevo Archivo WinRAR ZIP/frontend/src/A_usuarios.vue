@@ -29,12 +29,15 @@
         <button class="btn-agregar" @click="agregarUsuario">+ Nuevo Usuario</button>
       </div>
 
+      <p v-if="mensaje" class="aviso-ok">{{ mensaje }}</p>
+      <p v-if="error && usuarios.length" class="aviso-error">{{ error }}</p>
+
       <!-- BUSCADOR -->
       <div class="buscador">
         <input 
           v-model="searchQuery" 
           type="text" 
-          placeholder="🔍 Buscar usuario por nombre o email..."
+          placeholder="🔍 Buscar usuario por nombre, email o ID..."
         >
       </div>
 
@@ -45,7 +48,7 @@
             <tr>
               <th>Nombre</th>
               <th>Email</th>
-              <th>Estado</th>
+              <th>Cuenta</th>
               <th>Rol</th>
               <th>Acciones</th>
             </tr>
@@ -56,12 +59,18 @@
               <td>{{ usuario.correo }}</td>
               <td>
                 <span :class="usuario.estado">
-                  {{ usuario.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                  {{ usuario.estado === 'activo' ? 'Activa' : 'Desactivada' }}
                 </span>
               </td>
               <td>{{ usuario.rol === 'admin' ? 'Admin' : 'Usuario' }}</td>
               <td>
                 <button class="btn-editar" @click="editarUsuario(usuario)">Editar</button>
+                <button
+                  v-if="usuario.id !== sesion?.id"
+                  class="btn-estado"
+                  :class="usuario.estado === 'activo' ? 'btn-desactivar' : 'btn-activar'"
+                  @click="cambiarEstado(usuario)"
+                >{{ usuario.estado === 'activo' ? 'Desactivar' : 'Activar' }}</button>
                 <button
                   v-if="usuario.id !== sesion?.id"
                   class="btn-eliminar"
@@ -92,10 +101,12 @@
           :placeholder="formulario.id ? 'Nueva contraseña (opcional)' : 'Contraseña'"
           :required="!formulario.id"
         >
+        <small v-if="formulario.contraseña || !formulario.id" class="ayuda">Mínimo 8 caracteres, con al menos una letra y un número.</small>
         <select v-model="formulario.rol" :disabled="formulario.id === sesion?.id">
           <option value="usuario">Usuario</option>
           <option value="admin">Administrador</option>
         </select>
+        <p v-if="errorFormulario" class="aviso-error">{{ errorFormulario }}</p>
         <div class="modal-buttons">
           <button type="submit" class="btn-agregar">Guardar</button>
           <button type="button" class="btn-eliminar" @click="formulario = null">Cancelar</button>
@@ -115,6 +126,7 @@ const sesion = obtenerSesion()
 const menuItems = ref([
   { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
   { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
   { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
   { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
   { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
@@ -126,6 +138,14 @@ const searchQuery = ref('')
 const usuarios = ref([])
 const error = ref('')
 const formulario = ref(null)
+const errorFormulario = ref('')
+const mensaje = ref('')
+
+const avisar = (texto) => {
+  mensaje.value = texto
+  error.value = ''
+  setTimeout(() => { if (mensaje.value === texto) mensaje.value = '' }, 3500)
+}
 
 const cargarUsuarios = async () => {
   try {
@@ -137,42 +157,66 @@ const cargarUsuarios = async () => {
 }
 onMounted(cargarUsuarios)
 
-// --- LÓGICA DE FILTRADO (Buscador) ---
+// --- LÓGICA DE FILTRADO (Buscador por nombre, correo o ID) ---
 const usuariosFiltrados = computed(() => {
-  const query = searchQuery.value.toLowerCase()
+  const query = searchQuery.value.trim().toLowerCase()
   return usuarios.value.filter(u =>
     u.nombre.toLowerCase().includes(query) ||
-    u.correo.toLowerCase().includes(query)
+    u.correo.toLowerCase().includes(query) ||
+    String(u.id) === query
   )
 })
 
 // --- ACCIONES ---
 const agregarUsuario = () => {
+  errorFormulario.value = ''
   formulario.value = { nombre: '', correo: '', contraseña: '', rol: 'usuario' }
 }
 
 const editarUsuario = (usuario) => {
+  errorFormulario.value = ''
   formulario.value = { id: usuario.id, nombre: usuario.nombre, correo: usuario.correo, contraseña: '', rol: usuario.rol }
 }
 
 const guardarUsuario = async () => {
   const { id, ...datos } = formulario.value
+  errorFormulario.value = ''
+  if (!window.confirm(id ? `¿Guardar los cambios de ${datos.nombre}?` : `¿Crear la cuenta de ${datos.nombre}?`)) return
   try {
     if (id) await api(`/admin/usuarios/${id}`, { method: 'PUT', body: datos })
     else await api('/admin/usuarios', { method: 'POST', body: datos })
     formulario.value = null
     await cargarUsuarios()
+    avisar(id ? 'Usuario actualizado' : 'Usuario creado')
   } catch (e) {
-    console.error(e);
+    errorFormulario.value = e.message
+  }
+}
+
+// Activar o desactivar la cuenta. Una cuenta desactivada no puede iniciar sesión.
+const cambiarEstado = async (usuario) => {
+  const nuevo = usuario.estado === 'activo' ? 'inactivo' : 'activo'
+  const pregunta = nuevo === 'inactivo'
+    ? `¿Desactivar la cuenta de ${usuario.nombre}? No podrá iniciar sesión hasta que la actives de nuevo.`
+    : `¿Activar la cuenta de ${usuario.nombre}?`
+  if (!window.confirm(pregunta)) return
+  try {
+    const r = await api(`/admin/usuarios/${usuario.id}/estado`, { method: 'PUT', body: { estado: nuevo } })
+    await cargarUsuarios()
+    avisar(r.mensaje)
+  } catch (e) {
+    error.value = e.message
   }
 }
 
 const eliminarUsuario = async (usuario) => {
+  if (!window.confirm(`¿Eliminar la cuenta de ${usuario.nombre}? Se borrarán también sus movimientos, metas y presupuestos.`)) return
   try {
     await api(`/admin/usuarios/${usuario.id}`, { method: 'DELETE' })
     await cargarUsuarios()
+    avisar('Usuario eliminado')
   } catch (e) {
-    console.error(e);
+    error.value = e.message
   }
 }
 </script>
@@ -2272,4 +2316,10 @@ th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #eee; }
   gap: 0.5rem;
   justify-content: flex-end;
 }
+.btn-estado { border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; margin-right: 6px; font-weight: 600; font-family: inherit; }
+.btn-estado.btn-desactivar { background: #fef3c7; color: #b45309; }
+.btn-estado.btn-activar { background: #d1fae5; color: #047857; }
+.aviso-ok { background: #f0fff4; border: 1px solid #9ae6b4; color: #1a8a4a; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; }
+.aviso-error { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; }
+.ayuda { color: #6b7280; font-size: 12px; }
 </style>

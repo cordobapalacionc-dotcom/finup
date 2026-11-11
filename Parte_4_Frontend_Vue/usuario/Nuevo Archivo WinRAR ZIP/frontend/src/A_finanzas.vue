@@ -128,6 +128,7 @@ const error = ref('');
 const menuItems = ref([
   { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
   { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
   { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
   { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
   { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },

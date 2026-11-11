@@ -12,9 +12,18 @@
           <select v-model="periodo" @change="cargarDatos" class="selector-periodo">
             <option v-for="(texto, valor) in NOMBRE_PERIODO" :key="valor" :value="valor">📅 {{ texto }}</option>
           </select>
+          <input v-if="periodo === 'mes'" v-model="mesElegido" type="month" :max="mesActual" class="selector-periodo" @change="cargarDatos">
+          <select v-if="periodo === 'anio'" v-model="anioElegido" class="selector-periodo" @change="cargarDatos">
+            <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
+          </select>
           <button class="btn" @click="generarReporte">📄 Generar reporte</button>
+          <!-- CU-06 · Exportar reporte -->
+          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('pdf')">⬇️ PDF</button>
+          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('excel')">⬇️ Excel</button>
         </div>
       </header>
+      <p class="periodo-texto">Periodo: <b>{{ textoPeriodo }}</b></p>
+      <p v-if="errorExportar" class="error-categoria">{{ errorExportar }}</p>
 
       <!-- Totales -->
       <section class="stats">
@@ -122,12 +131,21 @@
 import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { api, moneda, obtenerSesion } from './api';
+import { api, moneda, obtenerSesion, fechaCorta } from './api';
+import { exportarReporte } from './exportarReporte';
 
 const router = useRouter();
 const sesion = obtenerSesion();
 
-const NOMBRE_PERIODO = { '7': 'Últimos 7 días', '30': 'Últimos 30 días', '90': 'Últimos 90 días', '365': 'Último año' };
+const NOMBRE_PERIODO = { '7': 'Últimos 7 días', '30': 'Últimos 30 días', '90': 'Últimos 90 días', '365': 'Último año', mes: 'Un mes', anio: 'Un año' };
+const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const mesActual = new Date().toLocaleDateString('sv-SE').slice(0, 7); // YYYY-MM
+const anioActual = new Date().getFullYear();
+const anios = Array.from({ length: 6 }, (_, i) => anioActual - i);
+const mesElegido = ref(mesActual);
+const anioElegido = ref(anioActual);
+const exportando = ref(false);
+const errorExportar = ref('');
 // Cómo se agrupa la gráfica en cada periodo
 const AGRUPACION = { '7': 'dias=7', '30': 'dias=30&agrupar=semana', '90': 'meses=3', '365': 'meses=12' };
 const EMOJI = {
@@ -136,6 +154,22 @@ const EMOJI = {
 };
 
 const periodo = ref('30');
+
+// Parámetros del periodo elegido para la API: ?dias=N, ?mes=YYYY-MM o ?anio=YYYY
+const consulta = () => {
+  if (periodo.value === 'mes') return `mes=${mesElegido.value || mesActual}`;
+  if (periodo.value === 'anio') return `anio=${anioElegido.value}`;
+  return `dias=${periodo.value}`;
+};
+const consultaSerie = () => (periodo.value === 'mes' || periodo.value === 'anio') ? consulta() : AGRUPACION[periodo.value];
+const textoPeriodo = computed(() => {
+  if (periodo.value === 'mes') {
+    const [a, m] = (mesElegido.value || mesActual).split('-');
+    return `${NOMBRE_MES[Number(m) - 1]} de ${a}`;
+  }
+  if (periodo.value === 'anio') return `año ${anioElegido.value}`;
+  return NOMBRE_PERIODO[periodo.value].toLowerCase();
+});
 const resumen = ref({ ingresos: 0, gastos: 0, transacciones: 0, metas: 0, metas_cumplidas: 0 });
 const serie = ref([]);
 const gastosCategoria = ref([]);
@@ -163,9 +197,9 @@ const cargarGuardados = async () => {
 const cargarDatos = async () => {
   try {
     const [r, s, g] = await Promise.all([
-      api(`/reportes/resumen?dias=${periodo.value}`),
-      api(`/reportes/serie?${AGRUPACION[periodo.value]}`),
-      api(`/reportes/gastos-categoria?dias=${periodo.value}`)
+      api(`/reportes/resumen?${consulta()}`),
+      api(`/reportes/serie?${consultaSerie()}`),
+      api(`/reportes/gastos-categoria?${consulta()}`)
     ]);
     resumen.value = r;
     serie.value = s;
@@ -181,9 +215,9 @@ const generarReporte = async () => {
     const { id } = await api('/reportes/guardados', {
       method: 'POST',
       body: {
-        tipo: `Resumen: ${NOMBRE_PERIODO[periodo.value].toLowerCase()}`,
+        tipo: `Resumen: ${textoPeriodo.value}`,
         datos: {
-          periodo: periodo.value,
+          periodo: consulta(),
           ingresos: resumen.value.ingresos,
           gastos: resumen.value.gastos,
           metas: resumen.value.metas,
@@ -228,11 +262,36 @@ const sePuedeBorrar = (cat) => cat.monto > 0 && cat.nombre !== 'Ahorro para meta
 const borrarGastosCategoria = async (cat) => {
   errorCategoria.value = '';
   try {
-    await api(`/reportes/gastos-categoria/${cat.id}?dias=${periodo.value}`, { method: 'DELETE' });
+    await api(`/reportes/gastos-categoria/${cat.id}?${consulta()}`, { method: 'DELETE' });
     confirmandoCategoria.value = null;
     await cargarDatos();
   } catch (e) {
     errorCategoria.value = e.message;
+  }
+};
+
+// Descarga el reporte del periodo elegido en PDF o Excel
+const exportar = async (formato) => {
+  errorExportar.value = '';
+  exportando.value = true;
+  try {
+    const movimientos = await api(`/reportes/movimientos?${consulta()}`);
+    await exportarReporte(formato, {
+      titulo: 'Reporte financiero · FinUp',
+      periodo: textoPeriodo.value + (resumen.value.desde ? ` (${fechaCorta(resumen.value.desde)} - ${fechaCorta(resumen.value.hasta)})` : ''),
+      archivo: textoPeriodo.value,
+      usuario: sesion?.nombre,
+      ingresos: resumen.value.ingresos,
+      gastos: resumen.value.gastos,
+      transacciones: resumen.value.transacciones,
+      categorias: categoriasConGasto.value,
+      serie: serie.value,
+      movimientos
+    });
+  } catch (e) {
+    errorExportar.value = e.message;
+  } finally {
+    exportando.value = false;
   }
 };
 
@@ -254,6 +313,9 @@ onMounted(() => {
 .header h1 span { color: #2dbb73; }
 .header p { margin: 6px 0 0; color: #718096; }
 .acciones-header { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.btn-exportar { background: #2d3748; }
+.btn-exportar:disabled { opacity: 0.6; cursor: wait; }
+.periodo-texto { margin: -18px 0 20px; color: #718096; text-transform: none; }
 .selector-periodo {
   padding: 10px 14px;
   border: 1px solid #e2e8f0;

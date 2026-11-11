@@ -19,7 +19,8 @@ if not exist "%BACKEND%\node_modules" (
     popd
 )
 
-if not exist "%FRONTEND%\node_modules" (
+rem Tambien se instala si faltan librerias nuevas (exportar a PDF/Excel)
+if not exist "%FRONTEND%\node_modules\jspdf" (
     echo Instalando dependencias del frontend...
     pushd "%FRONTEND%"
     call npm install
