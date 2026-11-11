@@ -19,8 +19,11 @@ if not exist "%BACKEND%\node_modules" (
     popd
 )
 
-rem Tambien se instala si faltan librerias nuevas (exportar a PDF/Excel)
-if not exist "%FRONTEND%\node_modules\jspdf" (
+rem Tambien se instala si faltan librerias nuevas (exportar a PDF/Excel, iconos)
+set "FALTAN="
+if not exist "%FRONTEND%\node_modules\jspdf" set "FALTAN=1"
+if not exist "%FRONTEND%\node_modules\lucide-vue-next" set "FALTAN=1"
+if defined FALTAN (
     echo Instalando dependencias del frontend...
     pushd "%FRONTEND%"
     call npm install

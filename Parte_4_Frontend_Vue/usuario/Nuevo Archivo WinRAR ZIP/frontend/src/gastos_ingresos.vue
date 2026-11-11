@@ -14,13 +14,13 @@
       <!-- CU-07 · Notificar presupuesto excedido -->
       <div v-for="(a, i) in alertas" :key="'alerta-' + i" class="alerta-presupuesto">
         <span>
-          ⚠️ <b>Superaste tu presupuesto {{ a.periodo }} de {{ a.categoria }}:</b>
+          <Icono nombre="alerta" /> <b>Superaste tu presupuesto {{ a.periodo }} de {{ a.categoria }}:</b>
           llevas ${{ a.acumulado.toLocaleString() }} de ${{ a.limite.toLocaleString() }}
           ({{ a.porcentaje }}%). Te pasaste por <b>${{ a.exceso.toLocaleString() }}</b>.
         </span>
         <button @click="alertas.splice(i, 1)" title="Cerrar">&times;</button>
       </div>
-      <p v-if="mensajeExito" class="aviso-exito">{{ mensajeExito }}</p>
+      <p v-if="mensajeExito" class="aviso-exito"><Icono nombre="ok" /> {{ mensajeExito }}</p>
 
       <section class="saldo">
         <div class="saldo-box">
@@ -109,14 +109,14 @@
           <tbody>
             <tr v-for="item in registrosFiltrados" :key="item.id" class="fila" @click="detalle = item">
               <td class="fecha">{{ fechaCorta(item.fecha) }}</td>
-              <td>{{ item.tipo === 'ingreso' ? '💼' : '💸' }} {{ item.nombre_ingreso || item.descripcion }}</td>
-              <td>{{ nombreCategoria(item.categoria_id) }}</td>
+              <td><Icono :nombre="item.tipo === 'ingreso' ? 'ingreso' : 'gasto'" /> {{ item.nombre_ingreso || item.descripcion }}</td>
+              <td><Icono :nombre="iconoCategoria(nombreCategoria(item.categoria_id))" /> {{ nombreCategoria(item.categoria_id) }}</td>
               <td :class="item.tipo === 'ingreso' ? 'positivo' : 'negativo'">
                 {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ Number(item.monto).toLocaleString() }}
               </td>
               <td class="opciones-celda" @click.stop>
-                <button v-if="!item.meta_id" class="btn-edit" title="Editar" @click="editarRegistro(item)">✏️</button>
-                <button class="btn-delete" title="Eliminar" @click="pendienteEliminar = item">🗑️</button>
+                <button v-if="!item.meta_id" class="btn-edit" title="Editar" @click="editarRegistro(item)"><Icono nombre="editar" /></button>
+                <button class="btn-delete" title="Eliminar" @click="pendienteEliminar = item"><Icono nombre="papelera" /></button>
               </td>
             </tr>
             <tr v-if="!registrosFiltrados.length">
@@ -199,9 +199,9 @@
           <button class="close-btn" @click="detalle = null" type="button">&times;</button>
         </div>
         <dl class="detalle">
-          <dt>Tipo</dt><dd>{{ detalle.tipo === 'ingreso' ? '💼 Ingreso' : '💸 Gasto' }}</dd>
+          <dt>Tipo</dt><dd><Icono :nombre="detalle.tipo" /> {{ detalle.tipo === 'ingreso' ? 'Ingreso' : 'Gasto' }}</dd>
           <dt>Monto</dt><dd :class="detalle.tipo === 'ingreso' ? 'positivo' : 'negativo'">{{ detalle.tipo === 'ingreso' ? '+' : '-' }}${{ Number(detalle.monto).toLocaleString() }}</dd>
-          <dt>Categoría</dt><dd>{{ nombreCategoria(detalle.categoria_id) }}</dd>
+          <dt>Categoría</dt><dd><Icono :nombre="iconoCategoria(nombreCategoria(detalle.categoria_id))" /> {{ nombreCategoria(detalle.categoria_id) }}</dd>
           <dt>Fecha</dt><dd>{{ fechaHora(detalle.fecha) }}</dd>
           <dt>Detalle</dt><dd>{{ detalle.descripcion || '—' }}</dd>
           <template v-if="detalle.meta_id"><dt>Meta</dt><dd>Abono a una meta de ahorro (se edita desde Metas)</dd></template>
@@ -246,7 +246,7 @@
 <script setup>
 import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted, watch } from 'vue';
-import { categorias, categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, cargarCategorias } from './categorias';
+import { categorias, categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, iconoCategoria, cargarCategorias } from './categorias';
 import { fechaCorta } from './api';
 
 cargarCategorias();
@@ -371,7 +371,7 @@ const guardarRegistro = async () => {
     }
     await cargarDatosDesdeDB(usuario.value.id);
     cerrarModal();
-    avisar(editandoId.value ? '✅ Movimiento actualizado' : '✅ Movimiento registrado con éxito');
+    avisar(editandoId.value ? 'Movimiento actualizado' : 'Movimiento registrado con éxito');
     // 5a: el gasto superó el presupuesto de la categoría
     alertas.value = data.alertas || [];
   } catch (e) {
@@ -387,7 +387,7 @@ const eliminarRegistro = async (id) => {
     if (res.ok) {
       pendienteEliminar.value = null;
       await cargarDatosDesdeDB(usuario.value.id);
-      avisar('🗑️ Movimiento eliminado');
+      avisar('Movimiento eliminado');
     }
   } catch (e) { console.error(e); }
 };

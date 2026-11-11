@@ -10,13 +10,13 @@
         :to="{ name: item.routeName }" 
         class="menu-item"
       >
-        <span class="icon">{{ item.icon }}</span>
+        <span class="icon"><Icono :nombre="item.icon" /></span>
         <span class="text">{{ item.text }}</span>
       </router-link>
     </li>
       </ul>
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
       </div>
@@ -26,12 +26,12 @@
     <main class="contenido">
       <h1>Pagina Principal</h1>
       <p class="subtitulo">Bienvenido al panel de administración</p>
-      <p v-if="error" class="subtitulo" style="color:#e74c3c">⚠️ {{ error }}</p>
+      <p v-if="error" class="subtitulo" style="color:#e74c3c"><Icono nombre="alerta" /> {{ error }}</p>
 
       <!-- CARDS -->
       <div class="cards">
         <div v-for="card in statsCards" :key="card.title" class="card">
-          <h3>{{ card.icon }} {{ card.title }}</h3>
+          <h3><Icono :nombre="card.icon" /> {{ card.title }}</h3>
           <p :class="{ positivo: card.isSaving }">{{ card.value }}</p>
           <span v-if="card.variacion !== null" :class="['trend', card.trendType]">
             {{ card.variacion >= 0 ? '▲' : '▼' }} {{ Math.abs(card.variacion) }}% vs mes anterior
@@ -42,7 +42,7 @@
 
       <!-- GRAFICA -->
       <div class="chart-container">
-        <h3>📊 Ingresos vs Gastos (Última semana)</h3>
+        <h3><Icono nombre="reportes" /> Ingresos vs Gastos (Última semana)</h3>
         <div class="chart-content">
           <div class="bars" id="graficaPrincipal">
             <div 
@@ -91,13 +91,13 @@ const error = ref('');
 
 // --- DATOS DEL MENÚ ---
 const menuItems = ref([
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion', active: false },
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio', active: true },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias', active: false },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes', active: false },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas', active: false },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion', active: false },
 ]);
 
 // --- DATOS DE TARJETAS ---
@@ -115,11 +115,11 @@ const statsCards = computed(() => {
   const r = resumen.value;
   if (!r) return [];
   return [
-    tarjeta('Total Usuarios', '👥', r.usuarios.toLocaleString('es-CO'), r.tendencia.usuarios, true,
+    tarjeta('Total Usuarios', 'usuarios', r.usuarios.toLocaleString('es-CO'), r.tendencia.usuarios, true,
       { nota: `${r.usuarios_conectados} conectado(s) ahora` }),
-    tarjeta('Tus Ingresos', '💰', moneda(r.ingresos), r.tendencia.ingresos),
-    tarjeta('Tus Gastos', '💸', moneda(r.gastos), r.tendencia.gastos, false),
-    tarjeta('Tu Ahorro', '📈', moneda(r.ingresos - r.gastos), r.tendencia.ahorro, true, { isSaving: true }),
+    tarjeta('Tus Ingresos', 'ingreso', moneda(r.ingresos), r.tendencia.ingresos),
+    tarjeta('Tus Gastos', 'gasto', moneda(r.gastos), r.tendencia.gastos, false),
+    tarjeta('Tu Ahorro', 'alcancia', moneda(r.ingresos - r.gastos), r.tendencia.ahorro, true, { isSaving: true }),
   ];
 });
 
@@ -902,7 +902,7 @@ form label {
 }
 
 .presupuesto-header h2::before {
-    content: "📋";
+    content: none;
     font-size: 24px;
 }
 

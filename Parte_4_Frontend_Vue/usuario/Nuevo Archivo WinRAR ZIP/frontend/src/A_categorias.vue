@@ -6,13 +6,13 @@
       <ul>
         <li v-for="item in menuItems" :key="item.text" :class="{ active: $route.name === item.routeName }">
           <router-link :to="{ name: item.routeName }" class="menu-item">
-            <span class="icon">{{ item.icon }}</span>
+            <span class="icon"><Icono :nombre="item.icon" /></span>
             <span class="text">{{ item.text }}</span>
           </router-link>
         </li>
       </ul>
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
       </div>
@@ -31,13 +31,13 @@ import GestionCategorias from './GestionCategorias.vue'
 const sesion = obtenerSesion()
 
 const menuItems = [
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio' },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios' },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias' },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas' },
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes' },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas' },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion' }
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio' },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios' },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias' },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas' },
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes' },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas' },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion' }
 ]
 </script>
 

@@ -8,7 +8,7 @@
   <div class="gestion">
     <header class="encabezado">
       <div>
-        <h1>🏷️ {{ esAdmin ? 'Categorías generales' : 'Mis categorías' }}</h1>
+        <h1><Icono nombre="categoria" /> {{ esAdmin ? 'Categorías generales' : 'Mis categorías' }}</h1>
         <p>{{ esAdmin
           ? 'Catálogo de categorías que ven todos los usuarios'
           : 'Clasifica tus ingresos y gastos. Además de las generales, puedes crear las tuyas.' }}</p>
@@ -16,14 +16,14 @@
       <button class="btn-principal" @click="abrirFormulario()">+ Nueva categoría</button>
     </header>
 
-    <p v-if="mensaje" class="aviso exito">{{ mensaje }}</p>
+    <p v-if="mensaje" class="aviso exito"><Icono nombre="ok" /> {{ mensaje }}</p>
     <p v-if="error && !formulario && !confirmacion" class="aviso error">{{ error }}</p>
 
     <div class="filtros">
       <div class="pestanas">
         <button v-for="(texto, valor) in FILTROS" :key="valor" :class="{ activa: filtro === valor }" @click="filtro = valor">{{ texto }}</button>
       </div>
-      <input v-model.trim="busqueda" type="text" placeholder="🔍 Buscar categoría...">
+      <input v-model.trim="busqueda" type="text" placeholder="Buscar categoría...">
     </div>
 
     <div class="tabla">
@@ -41,7 +41,7 @@
         </thead>
         <tbody>
           <tr v-for="c in visibles" :key="c.id" :class="{ apagada: c.estado !== 'activa' }">
-            <td><b>{{ etiquetaCategoria(c) }}</b></td>
+            <td><b><Icono :nombre="iconoCategoria(c.nombre)" /> {{ etiquetaCategoria(c) }}</b></td>
             <td><span class="etiqueta" :class="c.tipo">{{ c.tipo === 'ingreso' ? 'Ingreso' : 'Gasto' }}</span></td>
             <td class="descripcion">{{ c.descripcion || '—' }}</td>
             <td v-if="!esAdmin"><span class="etiqueta" :class="c.propia ? 'propia' : 'general'">{{ c.propia ? 'Propia' : 'General' }}</span></td>
@@ -49,11 +49,11 @@
             <td>{{ c.movimientos }}</td>
             <td class="acciones">
               <template v-if="editable(c)">
-                <button title="Editar" @click="abrirFormulario(c)">✏️</button>
+                <button title="Editar" @click="abrirFormulario(c)"><Icono nombre="editar" /></button>
                 <button :title="c.estado === 'activa' ? 'Desactivar' : 'Activar'" @click="pedirConfirmacion('estado', c)">
-                  {{ c.estado === 'activa' ? '⏸️' : '▶️' }}
+                  <Icono :nombre="c.estado === 'activa' ? 'pausa' : 'activar'" />
                 </button>
-                <button title="Eliminar" @click="pedirConfirmacion('eliminar', c)">🗑️</button>
+                <button title="Eliminar" @click="pedirConfirmacion('eliminar', c)"><Icono nombre="papelera" /></button>
               </template>
               <span v-else class="sin-acciones">{{ esSistema(c) ? 'Del sistema' : 'Solo lectura' }}</span>
             </td>
@@ -68,7 +68,7 @@
     <!-- Crear / editar -->
     <div v-if="formulario" class="fondo-modal" @click.self="cerrarModales">
       <form class="modal" @submit.prevent="guardar">
-        <h2>{{ formulario.id ? '✏️ Editar categoría' : '🏷️ Nueva categoría' }}</h2>
+        <h2><Icono :nombre="formulario.id ? 'editar' : 'categoria'" /> {{ formulario.id ? 'Editar categoría' : 'Nueva categoría' }}</h2>
         <label>Nombre
           <input v-model="formulario.nombre" type="text" maxlength="50" placeholder="Ej: Mascotas" required>
         </label>
@@ -92,7 +92,7 @@
     <!-- Confirmar cambio de estado o eliminación -->
     <div v-if="confirmacion" class="fondo-modal" @click.self="cerrarModales">
       <div class="modal">
-        <h2>{{ textoConfirmacion.titulo }}</h2>
+        <h2><Icono :nombre="textoConfirmacion.icono" /> {{ textoConfirmacion.titulo }}</h2>
         <p>{{ textoConfirmacion.detalle }}</p>
         <p v-if="error" class="aviso error">{{ error }}</p>
         <div class="botones">
@@ -107,7 +107,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { api } from './api'
-import { etiquetaCategoria, cargarCategorias } from './categorias'
+import { etiquetaCategoria, iconoCategoria, cargarCategorias } from './categorias'
 
 const props = defineProps({ modo: { type: String, default: 'usuario' } })
 const esAdmin = props.modo === 'admin'
@@ -189,13 +189,13 @@ const textoConfirmacion = computed(() => {
   const { accion, categoria } = confirmacion.value
   if (accion === 'eliminar') {
     return {
-      titulo: '🗑️ Eliminar categoría',
+      titulo: 'Eliminar categoría', icono: 'papelera',
       detalle: `¿Eliminar "${categoria.nombre}"? Esta acción no se puede deshacer.`
     }
   }
   return categoria.estado === 'activa'
-    ? { titulo: '⏸️ Desactivar categoría', detalle: `"${categoria.nombre}" dejará de aparecer al registrar movimientos. Los movimientos que ya tiene se conservan.` }
-    : { titulo: '▶️ Activar categoría', detalle: `"${categoria.nombre}" volverá a aparecer al registrar movimientos.` }
+    ? { titulo: 'Desactivar categoría', icono: 'pausa', detalle: `"${categoria.nombre}" dejará de aparecer al registrar movimientos. Los movimientos que ya tiene se conservan.` }
+    : { titulo: 'Activar categoría', icono: 'activar', detalle: `"${categoria.nombre}" volverá a aparecer al registrar movimientos.` }
 })
 
 const confirmar = async () => {

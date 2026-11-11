@@ -187,7 +187,7 @@ const manejarLogin = async () => {
           <label>Ingrese su Correo</label>
           <input v-model="emailReg" type="email" placeholder="Tu@email.com" required
                  :class="{ 'error': emailReg && !isEmailValid, 'valid': emailReg && isEmailValid }">
-          <div v-if="emailReg && !isEmailValid" class="error-message">⚠️ Correo inválido</div>
+          <div v-if="emailReg && !isEmailValid" class="error-message"><Icono nombre="alerta" /> Correo inválido</div>
         </div>
 
         <div class="input-group">
@@ -215,7 +215,7 @@ const manejarLogin = async () => {
           <label>Confirmar contraseña</label>
           <input v-model="confirmReg" type="password" placeholder="••••••••" required
                  :class="{ 'error': confirmReg && passwordReg !== confirmReg, 'valid': confirmReg && passwordReg === confirmReg && passwordReg }">
-          <div v-if="confirmReg && passwordReg !== confirmReg" class="error-message">⚠️ No coinciden</div>
+          <div v-if="confirmReg && passwordReg !== confirmReg" class="error-message"><Icono nombre="alerta" /> No coinciden</div>
         </div>
 
         <p v-if="errorRegistro" class="aviso-error">

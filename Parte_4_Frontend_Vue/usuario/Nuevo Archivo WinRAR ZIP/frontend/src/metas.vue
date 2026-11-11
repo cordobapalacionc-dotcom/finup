@@ -5,13 +5,13 @@
     <main class="main">
       <header class="header">
         <div>
-          <h1>🎯 Mis <span>Metas</span> de Ahorro</h1>
+          <h1><Icono nombre="metas" /> Mis <span>Metas</span> de Ahorro</h1>
           <p>Avanza y alcanza tus objetivos financieros</p>
         </div>
         <button class="btn" @click="abrirModalMeta()">+ Nueva Meta</button>
       </header>
 
-      <p v-if="aviso" class="aviso-meta">{{ aviso }}</p>
+      <p v-if="aviso" class="aviso-meta"><Icono nombre="ok" /> {{ aviso }}</p>
 
       <section class="goals">
         <div v-if="metas.length === 0" class="no-data">No tienes metas creadas.</div>
@@ -19,7 +19,7 @@
         <div v-for="(meta, index) in metas" :key="'meta-'+index" class="goal-card-container">
           <div class="goal-card">
             <div class="goal-info">
-              <h3>✨ {{ meta.nombre }}</h3>
+              <h3><Icono nombre="destello" /> {{ meta.nombre }}</h3>
               <p>Fecha límite: {{ fechaCorta(meta.fecha_limite) }}</p>
             </div>
             <div class="goal-progress-container">
@@ -35,21 +35,21 @@
               {{ calcularPorcentaje(meta) >= 100 ? '¡Logrado!' : 'En progreso' }}
             </div>
             <div class="actions">
-              <button v-if="calcularPorcentaje(meta) < 100" @click="abrirModalAbono(index)" class="btn-abonar" title="Abonar dinero a esta meta">💰 Abonar</button>
-              <button v-else @click="abrirModalRetiro(index)" class="btn-retirar" title="Sacar dinero de esta meta">💸 Sacar dinero</button>
-              <button @click="abrirModalMeta(index)" class="btn-mini">✏️</button>
-              <button @click="eliminarMeta(index)" class="btn-icon-delete">🗑️</button>
+              <button v-if="calcularPorcentaje(meta) < 100" @click="abrirModalAbono(index)" class="btn-abonar" title="Abonar dinero a esta meta"><Icono nombre="abonar" /> Abonar</button>
+              <button v-else @click="abrirModalRetiro(index)" class="btn-retirar" title="Sacar dinero de esta meta"><Icono nombre="sacar" /> Sacar dinero</button>
+              <button @click="abrirModalMeta(index)" class="btn-mini"><Icono nombre="editar" /></button>
+              <button @click="eliminarMeta(index)" class="btn-icon-delete"><Icono nombre="papelera" /></button>
             </div>
           </div>
           <div style="padding-left: 20px; color: #5778a4;" class="goal-analysis" v-if="calcularPorcentaje(meta) < 100">
             <p>
-              💡 <b>Análisis a 6 meses:</b> Te faltan ${{ (meta.monto - (meta.ahorro || 0)).toLocaleString() }}.
+              <Icono nombre="idea" /> <b>Análisis a 6 meses:</b> Te faltan ${{ (meta.monto - (meta.ahorro || 0)).toLocaleString() }}.
               Para lograrlo en 6 meses, necesitas ahorrar <b>${{ Math.ceil((meta.monto - (meta.ahorro || 0)) / 6).toLocaleString() }}</b> al mes.
               <br>
               <span :class="(meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000) ? 'alerta' : 'bien'">
                 {{ (meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000)
-                    ? `⚠️ Te faltan $${(Math.ceil((meta.monto - (meta.ahorro || 0)) / 6) - (usuario.ahorroMensual || 120000)).toLocaleString()} adicionales por mes.`
-                    : '✅ Tu ahorro actual es suficiente para cumplir el plazo.'
+                    ? `Te faltan $${(Math.ceil((meta.monto - (meta.ahorro || 0)) / 6) - (usuario.ahorroMensual || 120000)).toLocaleString()} adicionales por mes.`
+                    : 'Tu ahorro actual es suficiente para cumplir el plazo.'
                 }}
               </span>
             </p>
@@ -59,7 +59,7 @@
 
       <header class="header">
         <div>
-          <h1>📊 Presupuestos <span>Mensuales</span></h1>
+          <h1><Icono nombre="reportes" /> Presupuestos <span>Mensuales</span></h1>
           <p>Control de gastos por categoría</p>
         </div>
         <button class="btn btn-alt" @click="abrirModalPresupuesto()">+ Nuevo Presupuesto</button>
@@ -70,10 +70,10 @@
 
         <div v-for="(pre, index) in presupuestos" :key="'pre-'+index" class="card budget-card" :class="{ 'border-rojo': pre.gastado > pre.limite }">
           <div class="budget-header">
-            <h3>{{ pre.icono }} {{ pre.categoria }} <small class="periodo">{{ pre.periodo }}</small></h3>
+            <h3><Icono :nombre="pre.icono" /> {{ pre.categoria }} <small class="periodo">{{ pre.periodo }}</small></h3>
             <div class="actions">
-              <button @click="abrirModalPresupuesto(index)" class="btn-mini">✏️</button>
-              <button @click="eliminarPresupuesto(index)" class="btn-mini">🗑️</button>
+              <button @click="abrirModalPresupuesto(index)" class="btn-mini"><Icono nombre="editar" /></button>
+              <button @click="eliminarPresupuesto(index)" class="btn-mini"><Icono nombre="papelera" /></button>
             </div>
           </div>
           <div class="budget-money-info">
@@ -87,7 +87,8 @@
             </div>
           </div>
           <p>
-            {{ pre.gastado > pre.limite ? '❌ Límite superado por $' + (pre.gastado - pre.limite).toLocaleString() : (pre.gastado > pre.limite * 0.8 ? '⚠️ Casi al límite' : '✅ En control') }}
+            <Icono :nombre="pre.gastado > pre.limite ? 'error' : (pre.gastado > pre.limite * 0.8 ? 'alerta' : 'ok')" />
+            {{ pre.gastado > pre.limite ? 'Límite superado por $' + (pre.gastado - pre.limite).toLocaleString() : (pre.gastado > pre.limite * 0.8 ? 'Casi al límite' : 'En control') }}
           </p>
         </div>
       </section>
@@ -107,7 +108,7 @@
 
     <div v-if="modal.activo" class="modal-overlay" @click.self="cerrarModal">
       <div class="modal-content">
-        <h2>{{ modal.titulo }}</h2>
+        <h2><Icono :nombre="modal.icono" /> {{ modal.titulo }}</h2>
 
         <div v-if="modal.tipo === 'meta'">
           <div class="input-group"><label>Nombre</label><input v-model="nuevaMeta.nombre" type="text"></div>
@@ -128,12 +129,12 @@
         </div>
 
         <div v-if="modal.tipo === 'abono'" class="abono-contenido">
-          <p class="abono-meta">✨ {{ metaAbono?.nombre }}</p>
+          <p class="abono-meta"><Icono nombre="destello" /> {{ metaAbono?.nombre }}</p>
           <p class="abono-detalle">
             Llevas <b>${{ (metaAbono?.ahorro || 0).toLocaleString() }}</b> de ${{ (metaAbono?.monto || 0).toLocaleString() }}.
             Te faltan <b>${{ faltanteAbono.toLocaleString() }}</b>.
           </p>
-          <p class="abono-saldo">💵 Saldo disponible: <b>${{ saldoDisponible.toLocaleString() }}</b> · el abono se descuenta de tu saldo</p>
+          <p class="abono-saldo"><Icono nombre="billete" /> Saldo disponible: <b>${{ saldoDisponible.toLocaleString() }}</b> · el abono se descuenta de tu saldo</p>
           <div class="input-group">
             <label>¿Cuánto quieres abonar? ($)</label>
             <input v-model.number="montoAbono" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarAbono">
@@ -145,11 +146,11 @@
         </div>
 
         <div v-if="modal.tipo === 'retiro'" class="abono-contenido">
-          <p class="abono-meta">✨ {{ metaRetiro?.nombre }}</p>
+          <p class="abono-meta"><Icono nombre="destello" /> {{ metaRetiro?.nombre }}</p>
           <p class="abono-detalle">
             ¡Cumpliste esta meta! Tienes <b>${{ (metaRetiro?.ahorro || 0).toLocaleString() }}</b> ahorrados.
           </p>
-          <p class="abono-saldo">💵 Lo que saques vuelve a tu saldo para que puedas usarlo</p>
+          <p class="abono-saldo"><Icono nombre="billete" /> Lo que saques vuelve a tu saldo para que puedas usarlo</p>
           <div class="input-group">
             <label>¿Cuánto quieres sacar? ($)</label>
             <input v-model.number="montoRetiro" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarRetiro">
@@ -195,7 +196,7 @@
 import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { categoriasGasto, etiquetaCategoria, cargarCategorias } from './categorias';
+import { categoriasGasto, etiquetaCategoria, iconoCategoria, cargarCategorias } from './categorias';
 import { fechaCorta } from './api';
 
 cargarCategorias();
@@ -247,7 +248,7 @@ const cargarDatos = async () => {
       limite: parseFloat(p.monto_limite) || 0,
       gastado: parseFloat(p.acumulado ?? p.monto_actual ?? 0),
       periodo: p.periodo,
-      icono: '💰'
+      icono: iconoCategoria(p.categoria_nombre)
     }));
   } catch (e) {
     console.error("Error al cargar:", e);
@@ -285,7 +286,7 @@ const guardarMeta = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
-      avisar(esEdicion ? '✅ Meta actualizada' : '✅ Meta creada');
+      avisar(esEdicion ? 'Meta actualizada' : 'Meta creada');
     } else {
       errorMeta.value = (await res.json()).error || 'No se pudo guardar la meta';
     }
@@ -328,7 +329,7 @@ const guardarPresupuesto = async () => {
     if (res.ok) {
       await cargarDatos();
       cerrarModal();
-      avisar('✅ Presupuesto guardado');
+      avisar('Presupuesto guardado');
     } else {
       errorPresupuesto.value = (await res.json()).error || 'No se pudo guardar el presupuesto';
     }
@@ -345,7 +346,7 @@ const errorMeta = ref('');
 
 const abrirModalMeta = (index = null) => {
   errorMeta.value = '';
-  modal.value = { activo: true, tipo: 'meta', titulo: index !== null ? '✏️ Editar Meta' : '🎯 Nueva Meta', editandoIndex: index };
+  modal.value = { activo: true, tipo: 'meta', titulo: index !== null ? 'Editar Meta' : 'Nueva Meta', icono: index !== null ? 'editar' : 'metas', editandoIndex: index };
   if (index !== null) {
     const m = metas.value[index];
     nuevaMeta.value = { id: m.id, nombre: m.nombre, monto: m.monto, ahorro: m.ahorro, fecha_limite: String(m.fecha_limite || '').slice(0, 10) };
@@ -356,7 +357,7 @@ const abrirModalMeta = (index = null) => {
 
 const abrirModalPresupuesto = (index = null) => {
   errorPresupuesto.value = '';
-  modal.value = { activo: true, tipo: 'presupuesto', titulo: index !== null ? '✏️ Editar Presupuesto' : '📊 Nuevo Presupuesto', editandoIndex: index };
+  modal.value = { activo: true, tipo: 'presupuesto', titulo: index !== null ? 'Editar Presupuesto' : 'Nuevo Presupuesto', icono: index !== null ? 'editar' : 'reportes', editandoIndex: index };
   if (index !== null) {
     const p = presupuestos.value[index];
     nuevoPresupuesto.value = { id: p.id, limite: p.limite, categoria_id: p.categoria_id, periodo: p.periodo || 'mensual' };
@@ -384,7 +385,7 @@ const abrirModalAbono = async (index) => {
   metaAbono.value = metas.value[index];
   montoAbono.value = null;
   errorAbono.value = '';
-  modal.value = { activo: true, tipo: 'abono', titulo: '💰 Abonar a la meta', editandoIndex: null };
+  modal.value = { activo: true, tipo: 'abono', titulo: 'Abonar a la meta', icono: 'abonar', editandoIndex: null };
   try { await cargarSaldo(); } catch (e) { console.error(e); }
 };
 
@@ -405,7 +406,7 @@ const guardarAbono = async () => {
       await cargarDatos();
       cerrarModal();
       // 4a: los aportes alcanzaron el monto objetivo
-      avisar(data.cumplida ? '🎉 ' + data.mensaje : '✅ Abono registrado');
+      avisar(data.cumplida ? data.mensaje : 'Abono registrado');
     } else {
       errorAbono.value = data.error || 'No se pudo registrar el abono';
       if (typeof data.saldo === 'number') saldoDisponible.value = data.saldo;
@@ -422,7 +423,7 @@ const abrirModalRetiro = (index) => {
   metaRetiro.value = metas.value[index];
   montoRetiro.value = null;
   errorRetiro.value = '';
-  modal.value = { activo: true, tipo: 'retiro', titulo: '💸 Sacar dinero de la meta', editandoIndex: null };
+  modal.value = { activo: true, tipo: 'retiro', titulo: 'Sacar dinero de la meta', icono: 'sacar', editandoIndex: null };
 };
 
 const guardarRetiro = async () => {

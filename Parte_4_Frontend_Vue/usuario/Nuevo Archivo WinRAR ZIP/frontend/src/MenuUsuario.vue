@@ -5,7 +5,7 @@
 -->
 <template>
   <aside class="sidebar">
-    <div class="logo">🐷 <span>Finanzas <b>Personales</b></span></div>
+    <div class="logo"><Icono nombre="alcancia" /> <span>Finanzas <b>Personales</b></span></div>
 
     <nav class="menu">
       <router-link to="/inicio">Página Principal</router-link>

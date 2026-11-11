@@ -10,13 +10,13 @@
         :to="{ name: item.routeName }" 
         class="menu-item"
       >
-        <span class="icon">{{ item.icon }}</span>
+        <span class="icon"><Icono :nombre="item.icon" /></span>
         <span class="text">{{ item.text }}</span>
       </router-link>
     </li>
       </ul>
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
       </div>
@@ -29,7 +29,7 @@
         <button class="btn-agregar" @click="agregarUsuario">+ Nuevo Usuario</button>
       </div>
 
-      <p v-if="mensaje" class="aviso-ok">{{ mensaje }}</p>
+      <p v-if="mensaje" class="aviso-ok"><Icono nombre="ok" /> {{ mensaje }}</p>
       <p v-if="error && usuarios.length" class="aviso-error">{{ error }}</p>
 
       <!-- BUSCADOR -->
@@ -37,7 +37,7 @@
         <input 
           v-model="searchQuery" 
           type="text" 
-          placeholder="🔍 Buscar usuario por nombre, email o ID..."
+          placeholder="Buscar usuario por nombre, email o ID..."
         >
       </div>
 
@@ -124,13 +124,13 @@ const sesion = obtenerSesion()
 
 // --- DATOS DEL MENÚ ---
 const menuItems = ref([
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion', active: false },
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio', active: true },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias', active: false },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes', active: false },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas', active: false },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion', active: false },
 ]);
 
 // --- ESTADO REACTIVO ---
@@ -961,7 +961,7 @@ form label {
 }
 
 .presupuesto-header h2::before {
-    content: "📋";
+    content: none;
     font-size: 24px;
 }
 

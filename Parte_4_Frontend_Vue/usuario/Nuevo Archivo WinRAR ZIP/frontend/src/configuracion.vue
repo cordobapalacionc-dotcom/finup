@@ -12,7 +12,7 @@
         
         <div class="card">
           <div class="card-header">
-            <span class="icon">👤</span>
+            <span class="icon"><Icono nombre="usuario" /></span>
             <h3>Perfil</h3>
           </div>
           <div class="input-group">
@@ -29,7 +29,7 @@
         
         <div class="card">
           <div class="card-header">
-            <span class="icon">🔒</span>
+            <span class="icon"><Icono nombre="candado" /></span>
             <h3>Seguridad</h3>
           </div>
           <div class="input-group">
@@ -52,18 +52,18 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="icon">🎨</span>
+            <span class="icon"><Icono nombre="paleta" /></span>
             <h3>Apariencia</h3>
           </div>
           <p class="tema-descripcion">Elige cómo quieres ver la aplicación.</p>
           <div class="tema-opciones">
             <button type="button" class="tema-opcion" :class="{ seleccionada: tema === 'claro' }" @click="tema = 'claro'">
               <span class="tema-muestra claro no-invertir"></span>
-              ☀️ Claro
+              <Icono nombre="sol" /> Claro
             </button>
             <button type="button" class="tema-opcion" :class="{ seleccionada: tema === 'oscuro' }" @click="tema = 'oscuro'">
               <span class="tema-muestra oscuro no-invertir"></span>
-              🌙 Oscuro
+              <Icono nombre="luna" /> Oscuro
             </button>
           </div>
         </div>

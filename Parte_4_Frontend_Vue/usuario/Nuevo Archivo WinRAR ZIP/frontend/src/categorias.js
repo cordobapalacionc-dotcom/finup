@@ -4,19 +4,23 @@
 import { ref, computed } from 'vue'
 import { api } from './api'
 
-const EMOJI = {
-  'Sueldo': '💼',
-  'Freelance': '💰',
-  'Otros ingresos': '💵',
-  'Alimentación': '🛒',
-  'Transporte': '🚗',
-  'Entretenimiento': '🎬',
-  'Servicios': '💡',
-  'Salud': '🏥',
-  'Educación': '🎓',
-  'Otros gastos': '📦',
-  'Ahorro para metas': '🐷'
+// Nombre del icono (ver Icono.vue) de cada categoría
+const ICONO = {
+  'Sueldo': 'sueldo',
+  'Freelance': 'freelance',
+  'Otros ingresos': 'billete',
+  'Alimentación': 'mercado',
+  'Transporte': 'transporte',
+  'Entretenimiento': 'entretenimiento',
+  'Servicios': 'servicios',
+  'Salud': 'salud',
+  'Educación': 'educacion',
+  'Otros gastos': 'paquete',
+  'Ahorro para metas': 'alcancia'
 }
+
+// <Icono :nombre="iconoCategoria(c.nombre)" />
+export const iconoCategoria = (nombre) => ICONO[nombre] || 'categoria'
 
 // Se asigna sola al abonar a una meta: no se ofrece en los formularios
 const AUTOMATICAS = ['Ahorro para metas']
@@ -27,8 +31,8 @@ const activa = (c) => (c.estado || 'activa') === 'activa'
 export const categoriasIngreso = computed(() => categorias.value.filter(c => c.tipo === 'ingreso' && activa(c)))
 export const categoriasGasto = computed(() => categorias.value.filter(c => c.tipo === 'gasto' && activa(c) && !AUTOMATICAS.includes(c.nombre)))
 
-// "🛒 Alimentación"
-export const etiquetaCategoria = (c) => `${EMOJI[c.nombre] || '🏷️'} ${c.nombre}`
+// Texto de la categoría (en listas desplegables no se pueden poner iconos)
+export const etiquetaCategoria = (c) => c.nombre
 
 // Etiqueta a partir del id (para tablas)
 export const nombreCategoria = (id) => {

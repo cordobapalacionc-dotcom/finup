@@ -10,13 +10,13 @@
         :to="{ name: item.routeName }" 
         class="menu-item"
       >
-        <span class="icon">{{ item.icon }}</span>
+        <span class="icon"><Icono :nombre="item.icon" /></span>
         <span class="text">{{ item.text }}</span>
       </router-link>
     </li>
       </ul>
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
       </div>
@@ -33,15 +33,15 @@
             <p>con reportes detallados por periodo</p>
           </div>
           <div class="fecha-selector">
-            <span>📅</span>
+            <span><Icono nombre="calendario" /></span>
             <select v-model="periodoSeleccionado" @change="cargarDatos">
               <option value="7">Últimos 7 días</option>
               <option value="30">Últimos 30 días</option>
               <option value="90">Últimos 90 días</option>
               <option value="365">Último año</option>
             </select>
-            <button class="btn-exportar" :disabled="exportando" @click="exportar('pdf')">⬇️ PDF</button>
-            <button class="btn-exportar" :disabled="exportando" @click="exportar('excel')">⬇️ Excel</button>
+            <button class="btn-exportar" :disabled="exportando" @click="exportar('pdf')"><Icono nombre="descargar" /> PDF</button>
+            <button class="btn-exportar" :disabled="exportando" @click="exportar('excel')"><Icono nombre="descargar" /> Excel</button>
           </div>
         </header>
         <p v-if="errorExportar" class="error-exportar">{{ errorExportar }}</p>
@@ -49,7 +49,7 @@
         <!-- CARDS ESTADÍSTICAS -->
         <section class="stats-cards">
           <div v-for="card in stats" :key="card.titulo" class="stat-card" :class="card.clase">
-            <h3>{{ card.icono }} {{ card.titulo }}</h3>
+            <h3><Icono :nombre="card.icono" /> {{ card.titulo }}</h3>
             <div class="valor">{{ card.valor }}</div>
             <div v-if="card.trend" :class="['trend', card.trendClase]">
               {{ card.trend }}
@@ -61,7 +61,7 @@
         <!-- GRÁFICO DE BARRAS (INGRESOS VS GASTOS) -->
         <section class="chart-section">
           <div class="chart-header">
-            <h3>📊 Ingresos vs Gastos</h3>
+            <h3><Icono nombre="reportes" /> Ingresos vs Gastos</h3>
             <div class="chart-legend">
               <div class="legend-item"><span class="legend-color ingresos"></span> Ingresos</div>
               <div class="legend-item"><span class="legend-color gastos"></span> Gastos</div>
@@ -136,7 +136,7 @@
           <!-- REPORTES RECIENTES -->
           <section class="recientes-section">
             <div class="recientes-header">
-              <h3>📄 Reportes Recientes</h3>
+              <h3><Icono nombre="documento" /> Reportes Recientes</h3>
               <button v-if="reportesRecientes.length > 1" class="btn-borrar-todos" @click="borrarTodos">Borrar todos</button>
             </div>
             <div class="recientes-list">
@@ -147,13 +147,13 @@
                 :class="{ abierto: reporteAbierto === rep.id }"
               >
                 <div class="reporte-cabecera" @click="alternarReporte(rep.id)">
-                  <div class="reporte-icono">📊</div>
+                  <div class="reporte-icono"><Icono nombre="reportes" /></div>
                   <div class="reporte-info">
                     <h4>{{ rep.tipo }}</h4>
                     <p>{{ fechaHora(rep.fecha_generado) }} · {{ rep.usuario }}</p>
                   </div>
                   <span class="reporte-flecha">{{ reporteAbierto === rep.id ? '▲' : '▼' }}</span>
-                  <button class="btn-borrar-reporte" title="Eliminar reporte" @click.stop="eliminarReporte(rep.id)">🗑️</button>
+                  <button class="btn-borrar-reporte" title="Eliminar reporte" @click.stop="eliminarReporte(rep.id)"><Icono nombre="papelera" /></button>
                 </div>
 
                 <div v-if="reporteAbierto === rep.id" class="reporte-detalle">
@@ -176,7 +176,7 @@
               </div>
 
               <div v-if="reportesRecientes.length === 0" class="sin-reportes">
-                <div>📄</div>
+                <div><Icono nombre="documento" /></div>
                 Aún no hay reportes. Pulsa <b>Generar reporte</b> para guardar los totales del periodo elegido.
               </div>
             </div>
@@ -184,13 +184,13 @@
 
           <!-- LISTADO DE CATEGORÍAS CON PROGRESO -->
           <section class="categorias-section">
-            <h3>📂 Categorías de Gastos</h3>
+            <h3><Icono nombre="carpeta" /> Categorías de Gastos</h3>
             <p v-if="errorCategoria" class="error-categoria">{{ errorCategoria }}</p>
             <div class="categorias-list">
               <div v-for="cat in categorias" :key="cat.nombre" class="categoria-group">
                 <div class="categoria-item">
                   <div class="categoria-info">
-                    <div class="categoria-icono" :style="{ background: cat.color + '22', color: cat.color }">{{ cat.emoji }}</div>
+                    <div class="categoria-icono" :style="{ background: cat.color + '22', color: cat.color }"><Icono :nombre="cat.emoji" /></div>
                     <div class="categoria-texto">
                       <h4>{{ cat.nombre }}</h4>
                       <p>{{ cat.desc }}</p>
@@ -199,7 +199,7 @@
                   <div class="categoria-monto">
                     <div class="monto">{{ moneda(cat.monto) }}</div>
                     <div class="porcentaje">{{ cat.porcentaje }}%
-                      <button v-if="sePuedeBorrar(cat)" class="btn-borrar-categoria" title="Quitar los gastos de esta categoría del reporte" @click="confirmandoCategoria = cat.id">🗑️</button>
+                      <button v-if="sePuedeBorrar(cat)" class="btn-borrar-categoria" title="Quitar los gastos de esta categoría del reporte" @click="confirmandoCategoria = cat.id"><Icono nombre="papelera" /></button>
                     </div>
                   </div>
                 </div>
@@ -218,7 +218,7 @@
               </div>
             </div>
             <div class="btn-ver-totales">
-              <button @click="generarReporte">📄 Generar reporte</button>
+              <button @click="generarReporte"><Icono nombre="documento" /> Generar reporte</button>
             </div>
           </section>
         </div>
@@ -238,13 +238,13 @@ const sesion = obtenerSesion();
 const periodoSeleccionado = ref("30");
 
 const menuItems = ref([
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion', active: false },
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio', active: true },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias', active: false },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes', active: false },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas', active: false },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion', active: false },
 ]);
 const resumen = ref(null);
 const serie = ref([]);
@@ -257,23 +257,23 @@ const stats = computed(() => {
   const balance = r.ingresos - r.gastos;
   const pctMetas = r.metas ? Math.round((r.metas_cumplidas / r.metas) * 100) : 0;
   return [
-    { titulo: 'Tus Ingresos', valor: moneda(r.ingresos), subtitulo: `${r.transacciones} movimiento(s)`, icono: '💰' },
-    { titulo: 'Tus Gastos', valor: moneda(r.gastos), icono: '💸' },
-    { titulo: 'Balance', valor: (balance >= 0 ? '+' : '-') + moneda(Math.abs(balance)), icono: '⚖️' },
-    { titulo: 'Metas Alcanzadas', valor: `${r.metas_cumplidas}/${r.metas}`, subtitulo: `${pctMetas}% completado`, clase: 'metas-card', icono: '🎯' },
+    { titulo: 'Tus Ingresos', valor: moneda(r.ingresos), subtitulo: `${r.transacciones} movimiento(s)`, icono: 'ingreso' },
+    { titulo: 'Tus Gastos', valor: moneda(r.gastos), icono: 'gasto' },
+    { titulo: 'Balance', valor: (balance >= 0 ? '+' : '-') + moneda(Math.abs(balance)), icono: 'balance' },
+    { titulo: 'Metas Alcanzadas', valor: `${r.metas_cumplidas}/${r.metas}`, subtitulo: `${pctMetas}% completado`, clase: 'metas-card', icono: 'metas' },
   ];
 });
 
 // Apariencia de cada categoría; las que no estén aquí usan la paleta de respaldo
 const ESTILO_CATEGORIA = {
-  'Alimentación': { emoji: '🍽️', color: '#2dbb73', desc: 'Comida y supermercado' },
-  'Transporte': { emoji: '🚗', color: '#f59e0b', desc: 'Gasolina y pasajes' },
-  'Entretenimiento': { emoji: '🎬', color: '#8b5cf6', desc: 'Cine, salidas y streaming' },
-  'Servicios': { emoji: '💡', color: '#3b82f6', desc: 'Luz, agua, internet' },
-  'Salud': { emoji: '🏥', color: '#ef4444', desc: 'Médico y farmacia' },
-  'Educación': { emoji: '🎓', color: '#14b8a6', desc: 'Cursos, libros y estudios' },
-  'Otros gastos': { emoji: '📦', color: '#6b7280', desc: 'Gastos varios' },
-  'Ahorro para metas': { emoji: '🐷', color: '#ec4899', desc: 'Dinero apartado para tus metas' },
+  'Alimentación': { emoji: 'comida', color: '#2dbb73', desc: 'Comida y supermercado' },
+  'Transporte': { emoji: 'transporte', color: '#f59e0b', desc: 'Gasolina y pasajes' },
+  'Entretenimiento': { emoji: 'entretenimiento', color: '#8b5cf6', desc: 'Cine, salidas y streaming' },
+  'Servicios': { emoji: 'servicios', color: '#3b82f6', desc: 'Luz, agua, internet' },
+  'Salud': { emoji: 'salud', color: '#ef4444', desc: 'Médico y farmacia' },
+  'Educación': { emoji: 'educacion', color: '#14b8a6', desc: 'Cursos, libros y estudios' },
+  'Otros gastos': { emoji: 'paquete', color: '#6b7280', desc: 'Gastos varios' },
+  'Ahorro para metas': { emoji: 'alcancia', color: '#ec4899', desc: 'Dinero apartado para tus metas' },
 };
 const PALETA = ['#ef4444', '#14b8a6', '#ec4899', '#6b7280'];
 const CIRCUNFERENCIA = 2 * Math.PI * 40;
@@ -283,7 +283,7 @@ const totalGastos = computed(() => gastosCategoria.value.reduce((acc, c) => acc 
 const categorias = computed(() => {
   let acumulado = 0;
   return gastosCategoria.value.map((c, i) => {
-    const estilo = ESTILO_CATEGORIA[c.nombre] || { emoji: '📦', color: PALETA[i % PALETA.length], desc: 'Otros gastos' };
+    const estilo = ESTILO_CATEGORIA[c.nombre] || { emoji: 'categoria', color: PALETA[i % PALETA.length], desc: 'Otros gastos' };
     const fraccion = totalGastos.value ? c.monto / totalGastos.value : 0;
     const segmento = fraccion * CIRCUNFERENCIA;
     const cat = {
@@ -1174,7 +1174,7 @@ form label {
 }
 
 .presupuesto-header h2::before {
-    content: "📋";
+    content: none;
     font-size: 24px;
 }
 

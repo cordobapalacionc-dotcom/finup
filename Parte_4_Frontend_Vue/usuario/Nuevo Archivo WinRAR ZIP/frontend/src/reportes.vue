@@ -5,21 +5,21 @@
     <main class="main">
       <header class="header">
         <div>
-          <h1>📊 Mis <span>Reportes</span></h1>
+          <h1><Icono nombre="reportes" /> Mis <span>Reportes</span></h1>
           <p>Analiza tus ingresos y gastos por periodo</p>
         </div>
         <div class="acciones-header">
           <select v-model="periodo" @change="cargarDatos" class="selector-periodo">
-            <option v-for="(texto, valor) in NOMBRE_PERIODO" :key="valor" :value="valor">📅 {{ texto }}</option>
+            <option v-for="(texto, valor) in NOMBRE_PERIODO" :key="valor" :value="valor">{{ texto }}</option>
           </select>
           <input v-if="periodo === 'mes'" v-model="mesElegido" type="month" :max="mesActual" class="selector-periodo" @change="cargarDatos">
           <select v-if="periodo === 'anio'" v-model="anioElegido" class="selector-periodo" @change="cargarDatos">
             <option v-for="a in anios" :key="a" :value="a">{{ a }}</option>
           </select>
-          <button class="btn" @click="generarReporte">📄 Generar reporte</button>
+          <button class="btn" @click="generarReporte"><Icono nombre="documento" /> Generar reporte</button>
           <!-- CU-06 · Exportar reporte -->
-          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('pdf')">⬇️ PDF</button>
-          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('excel')">⬇️ Excel</button>
+          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('pdf')"><Icono nombre="descargar" /> PDF</button>
+          <button class="btn btn-exportar" :disabled="exportando" @click="exportar('excel')"><Icono nombre="descargar" /> Excel</button>
         </div>
       </header>
       <p class="periodo-texto">Periodo: <b>{{ textoPeriodo }}</b></p>
@@ -28,20 +28,20 @@
       <!-- Totales -->
       <section class="stats">
         <div class="card stat">
-          <p>💰 Ingresos</p>
+          <p><Icono nombre="ingreso" /> Ingresos</p>
           <h3 class="positivo">{{ moneda(resumen.ingresos) }}</h3>
           <span>{{ resumen.transacciones }} movimiento(s)</span>
         </div>
         <div class="card stat">
-          <p>💸 Gastos</p>
+          <p><Icono nombre="gasto" /> Gastos</p>
           <h3 class="negativo">{{ moneda(resumen.gastos) }}</h3>
         </div>
         <div class="card stat">
-          <p>⚖️ Balance</p>
+          <p><Icono nombre="balance" /> Balance</p>
           <h3 :class="balance >= 0 ? 'positivo' : 'negativo'">{{ balance >= 0 ? '+' : '-' }}{{ moneda(Math.abs(balance)) }}</h3>
         </div>
         <div class="card stat">
-          <p>🎯 Metas cumplidas</p>
+          <p><Icono nombre="metas" /> Metas cumplidas</p>
           <h3>{{ resumen.metas_cumplidas }}/{{ resumen.metas }}</h3>
           <span>{{ resumen.metas ? Math.round(resumen.metas_cumplidas / resumen.metas * 100) : 0 }}% completado</span>
         </div>
@@ -70,14 +70,14 @@
       <div class="dos-columnas">
         <!-- Gasto por categoría -->
         <section class="card">
-          <h3>📂 Gastos por categoría</h3>
+          <h3><Icono nombre="carpeta" /> Gastos por categoría</h3>
           <div v-if="totalGastos === 0" class="vacio">No tienes gastos en este periodo.</div>
           <p v-if="errorCategoria" class="error-categoria">{{ errorCategoria }}</p>
           <div v-for="c in categoriasConGasto" :key="c.id" class="categoria">
             <div class="categoria-fila">
-              <span>{{ etiqueta(c.nombre) }}</span>
+              <span><Icono :nombre="iconoCategoria(c.nombre)" /> {{ c.nombre }}</span>
               <b>{{ moneda(c.monto) }} <small>{{ c.porcentaje }}%</small>
-                <button v-if="sePuedeBorrar(c)" class="btn-borrar-categoria" title="Quitar los gastos de esta categoría del reporte" @click="confirmandoCategoria = c.id">🗑️</button>
+                <button v-if="sePuedeBorrar(c)" class="btn-borrar-categoria" title="Quitar los gastos de esta categoría del reporte" @click="confirmandoCategoria = c.id"><Icono nombre="papelera" /></button>
               </b>
             </div>
             <div class="barra-fondo"><div class="barra-relleno" :style="{ width: c.porcentaje + '%' }"></div></div>
@@ -94,7 +94,7 @@
         <!-- Reportes guardados -->
         <section class="card">
           <div class="guardados-header">
-            <h3>📄 Reportes guardados</h3>
+            <h3><Icono nombre="documento" /> Reportes guardados</h3>
             <button v-if="guardados.length > 1" class="btn-texto-rojo" @click="borrarTodos">Borrar todos</button>
           </div>
           <div v-if="guardados.length === 0" class="vacio">
@@ -107,7 +107,7 @@
                 <span>{{ fechaHora(rep.fecha_generado) }}</span>
               </div>
               <span class="flecha">{{ abierto === rep.id ? '▲' : '▼' }}</span>
-              <button class="btn-borrar" title="Eliminar reporte" @click.stop="eliminarReporte(rep.id)">🗑️</button>
+              <button class="btn-borrar" title="Eliminar reporte" @click.stop="eliminarReporte(rep.id)"><Icono nombre="papelera" /></button>
             </div>
             <div v-if="abierto === rep.id && rep.datos" class="reporte-detalle">
               <div class="mini-totales">
@@ -133,6 +133,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, moneda, obtenerSesion, fechaCorta } from './api';
 import { exportarReporte } from './exportarReporte';
+import { iconoCategoria } from './categorias';
 
 const router = useRouter();
 const sesion = obtenerSesion();
@@ -148,10 +149,7 @@ const exportando = ref(false);
 const errorExportar = ref('');
 // Cómo se agrupa la gráfica en cada periodo
 const AGRUPACION = { '7': 'dias=7', '30': 'dias=30&agrupar=semana', '90': 'meses=3', '365': 'meses=12' };
-const EMOJI = {
-  'Alimentación': '🛒', 'Transporte': '🚗', 'Entretenimiento': '🎬', 'Servicios': '💡',
-  'Salud': '🏥', 'Educación': '🎓', 'Otros gastos': '📦', 'Ahorro para metas': '🐷'
-};
+
 
 const periodo = ref('30');
 
@@ -184,7 +182,6 @@ const categoriasConGasto = computed(() => gastosCategoria.value
 const maximo = computed(() => Math.max(1, ...serie.value.flatMap(g => [g.ingresos, g.gastos])));
 
 const altura = (valor) => `${Math.max((valor / maximo.value) * 100, valor > 0 ? 2 : 0)}%`;
-const etiqueta = (nombre) => `${EMOJI[nombre] || '🏷️'} ${nombre}`;
 const fechaHora = (texto) => {
   const d = new Date(texto.replace(' ', 'T'));
   return d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });

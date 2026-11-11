@@ -10,13 +10,13 @@
         :to="{ name: item.routeName }"
         class="menu-item"
       >
-        <span class="icon">{{ item.icon }}</span>
+        <span class="icon"><Icono :nombre="item.icon" /></span>
         <span class="text">{{ item.text }}</span>
       </router-link>
     </li>
       </ul>
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
       </div>
@@ -32,7 +32,7 @@
         <div class="presupuesto-header">
           <h2>Presupuesto Mensual por Categoría</h2>
           <div class="mes-selector">
-            <label>📅 Seleccionar mes:</label>
+            <label><Icono nombre="calendario" /> Seleccionar mes:</label>
             <select v-model="mesSeleccionado" @change="cargarPresupuestos">
               <option v-for="mes in meses" :key="mes.valor" :value="mes.valor">{{ mes.texto }}</option>
             </select>
@@ -53,7 +53,7 @@
               <tr v-for="cat in presupuestos" :key="cat.id">
                 <td>
                   <div class="categoria-nombre">
-                    <div :class="['categoria-icono', estiloCategoria(cat.nombre).clase]">{{ estiloCategoria(cat.nombre).icono }}</div>
+                    <div :class="['categoria-icono', estiloCategoria(cat.nombre).clase]"><Icono :nombre="estiloCategoria(cat.nombre).icono" /></div>
                     {{ cat.nombre }}
                   </div>
                 </td>
@@ -76,15 +76,15 @@
         <!-- Resumen de presupuesto (Calculado automáticamente) -->
         <div class="resumen-presupuesto">
           <div class="resumen-item">
-            <h4>💰 Presupuesto Total</h4>
+            <h4><Icono nombre="finanzas" /> Presupuesto Total</h4>
             <div class="valor presupuesto">{{ moneda(totalPresupuesto) }}</div>
           </div>
           <div class="resumen-item">
-            <h4>💸 Gastado en categorías con presupuesto</h4>
+            <h4><Icono nombre="gasto" /> Gastado en categorías con presupuesto</h4>
             <div class="valor asignado">{{ moneda(totalGastado) }}</div>
           </div>
           <div class="resumen-item">
-            <h4>✅ Restante</h4>
+            <h4><Icono nombre="ok" /> Restante</h4>
             <div class="valor restante" :class="{ 'texto-rojo': restante < 0 }">
               {{ moneda(restante) }}
             </div>
@@ -94,7 +94,7 @@
         <!-- Alertas -->
         <div class="alertas-container">
           <div v-for="cat in excedidas" :key="cat.id" class="alerta-presupuesto alerta-roja">
-            <span class="alerta-icono">⚠️</span>
+            <span class="alerta-icono"><Icono nombre="alerta" /></span>
             <span><strong>{{ cat.nombre }}</strong>: se ha excedido el presupuesto en {{ moneda(cat.gastado - cat.asignado) }}</span>
           </div>
         </div>
@@ -155,7 +155,7 @@
             <tbody>
               <tr v-for="meta in metasActivas" :key="meta.id">
                 <td>
-                  <div class="meta-nombre">🎯 {{ meta.nombre }}</div>
+                  <div class="meta-nombre"><Icono nombre="metas" /> {{ meta.nombre }}</div>
                   <div class="meta-montos">{{ moneda(meta.monto_actual) }} de {{ moneda(meta.monto_objetivo) }}</div>
                 </td>
                 <td>{{ fechaCorta(meta.fecha_limite) }}</td>
@@ -173,15 +173,15 @@
                   </span>
                 </td>
                 <td class="col-acciones">
-                  <button v-if="getMetaPorcentaje(meta) < 100" class="btn-abonar" @click="abrirAbono(meta)">💰 Abonar</button>
-                  <button v-else class="btn-retirar" @click="abrirRetiro(meta)">💸 Sacar dinero</button>
-                  <button class="btn-editar" @click="abrirEditar(meta)">✏️ Editar</button>
-                  <button class="btn-eliminar" @click="eliminarMeta(meta)">🗑️ Eliminar</button>
+                  <button v-if="getMetaPorcentaje(meta) < 100" class="btn-abonar" @click="abrirAbono(meta)"><Icono nombre="abonar" /> Abonar</button>
+                  <button v-else class="btn-retirar" @click="abrirRetiro(meta)"><Icono nombre="sacar" /> Sacar dinero</button>
+                  <button class="btn-editar" @click="abrirEditar(meta)"><Icono nombre="editar" /> Editar</button>
+                  <button class="btn-eliminar" @click="eliminarMeta(meta)"><Icono nombre="papelera" /> Eliminar</button>
                 </td>
               </tr>
               <tr v-if="metasActivas.length === 0">
                 <td colspan="5" class="sin-metas">
-                  <div class="sin-metas-icono">🎯</div>
+                  <div class="sin-metas-icono"><Icono nombre="metas" /></div>
                   Todavía no tienes metas.
                   <button v-if="!mostrarForm" class="btn-enlace" @click="mostrarForm = true">Crear la primera</button>
                 </td>
@@ -195,12 +195,12 @@
     <!-- Modal Abonar -->
     <div v-if="metaAbono" class="modal-overlay" @click.self="metaAbono = null">
       <form class="modal-content" @submit.prevent="guardarAbono">
-        <h3>💰 Abonar a "{{ metaAbono.nombre }}"</h3>
+        <h3><Icono nombre="abonar" /> Abonar a "{{ metaAbono.nombre }}"</h3>
         <p class="abono-detalle">
           Llevas <b>{{ moneda(metaAbono.monto_actual) }}</b> de {{ moneda(metaAbono.monto_objetivo) }}.
           Te faltan <b>{{ moneda(faltanteAbono) }}</b>.
         </p>
-        <p class="abono-saldo">💵 Saldo disponible: <b>{{ moneda(saldoDisponible) }}</b> · el abono se descuenta de tu saldo</p>
+        <p class="abono-saldo"><Icono nombre="billete" /> Saldo disponible: <b>{{ moneda(saldoDisponible) }}</b> · el abono se descuenta de tu saldo</p>
         <label class="campo">
           <span>Monto a abonar</span>
           <input v-model.number="montoAbono" type="number" min="1" placeholder="Ej: 50000" required>
@@ -219,9 +219,9 @@
     <!-- Modal Sacar dinero (metas cumplidas) -->
     <div v-if="metaRetiro" class="modal-overlay" @click.self="metaRetiro = null">
       <form class="modal-content" @submit.prevent="guardarRetiro">
-        <h3>💸 Sacar dinero de "{{ metaRetiro.nombre }}"</h3>
+        <h3><Icono nombre="sacar" /> Sacar dinero de "{{ metaRetiro.nombre }}"</h3>
         <p class="abono-detalle">¡Cumpliste esta meta! Tienes <b>{{ moneda(metaRetiro.monto_actual) }}</b> ahorrados.</p>
-        <p class="abono-saldo">💵 Lo que saques vuelve a tu saldo para que puedas usarlo</p>
+        <p class="abono-saldo"><Icono nombre="billete" /> Lo que saques vuelve a tu saldo para que puedas usarlo</p>
         <label class="campo">
           <span>Monto a sacar</span>
           <input v-model.number="montoRetiro" type="number" min="1" placeholder="Ej: 50000" required>
@@ -266,13 +266,13 @@ import { api, moneda, fechaCorta, obtenerSesion } from './api';
 const sesion = obtenerSesion();
 
 const menuItems = ref([
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio' },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios' },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas' },
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes' },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas' },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion' },
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio' },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios' },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias', active: false },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas' },
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes' },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas' },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion' },
 ]);
 
 // Últimos 12 meses para el selector (valor YYYY-MM)
@@ -288,16 +288,16 @@ const meses = Array.from({ length: 12 }, (_, i) => {
 });
 
 const ESTILO_CATEGORIA = {
-  'Alimentación': { icono: '🍽️', clase: 'icono-comida' },
-  'Servicios': { icono: '💡', clase: 'icono-servicios' },
-  'Transporte': { icono: '🚗', clase: 'icono-transporte' },
-  'Entretenimiento': { icono: '🎬', clase: 'icono-metas' },
-  'Salud': { icono: '🏥', clase: 'icono-servicios' },
-  'Educación': { icono: '🎓', clase: 'icono-transporte' },
-  'Otros gastos': { icono: '📦', clase: 'icono-metas' },
-  'Ahorro para metas': { icono: '🐷', clase: 'icono-metas' },
+  'Alimentación': { icono: 'comida', clase: 'icono-comida' },
+  'Servicios': { icono: 'servicios', clase: 'icono-servicios' },
+  'Transporte': { icono: 'transporte', clase: 'icono-transporte' },
+  'Entretenimiento': { icono: 'entretenimiento', clase: 'icono-metas' },
+  'Salud': { icono: 'salud', clase: 'icono-servicios' },
+  'Educación': { icono: 'educacion', clase: 'icono-transporte' },
+  'Otros gastos': { icono: 'paquete', clase: 'icono-metas' },
+  'Ahorro para metas': { icono: 'alcancia', clase: 'icono-metas' },
 };
-const estiloCategoria = (nombre) => ESTILO_CATEGORIA[nombre] || { icono: '📦', clase: 'icono-metas' };
+const estiloCategoria = (nombre) => ESTILO_CATEGORIA[nombre] || { icono: 'categoria', clase: 'icono-metas' };
 
 // --- ESTADO REACTIVO ---
 const mesSeleccionado = ref(meses[0].valor);
@@ -1215,7 +1215,7 @@ form label {
 }
 
 .presupuesto-header h2::before {
-    content: "📋";
+    content: none;
     font-size: 24px;
 }
 
@@ -2549,7 +2549,7 @@ tr:hover {
   align-items: center;
   gap: 10px;
 }
-.metas-header h2::before { content: "🎯"; font-size: 24px; }
+.metas-header h2::before { content: none; }
 .metas-resumen { margin-top: 4px; font-size: 13px; color: var(--gray-text); }
 
 /* Formulario */

@@ -10,14 +10,14 @@
         :to="{ name: item.routeName }" 
         class="menu-item"
       >
-        <span class="icon">{{ item.icon }}</span>
+        <span class="icon"><Icono :nombre="item.icon" /></span>
         <span class="text">{{ item.text }}</span>
       </router-link>
     </li>
       </ul>
       
       <div class="perfil">
-        <div class="icono">👤</div>
+        <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ usuario.nombre || 'Administrador' }}</p>
         <span>{{ usuario.rol || 'Admin' }}</span>
       </div>
@@ -31,15 +31,15 @@
       <!-- Cards de Resumen -->
       <div class="cards">
         <div class="card">
-          <h3>💰 Total Ingresos</h3>
+          <h3><Icono nombre="ingreso" /> Total Ingresos</h3>
           <p>{{ moneda(totalIngresos) }}</p>
         </div>
         <div class="card">
-          <h3>💸 Total Gastos</h3>
+          <h3><Icono nombre="gasto" /> Total Gastos</h3>
           <p>{{ moneda(totalGastos) }}</p>
         </div>
         <div class="card">
-          <h3>📈 Balance</h3>
+          <h3><Icono nombre="balance" /> Balance</h3>
           <p :class="balance >= 0 ? 'positivo' : 'negativo'">
             {{ moneda(balance) }}
           </p>
@@ -48,7 +48,7 @@
 
       <!-- Gráfica Dinámica -->
       <div class="chart-container">
-        <h3>📊 Evolución Financiera (últimos 6 meses)</h3>
+        <h3><Icono nombre="reportes" /> Evolución Financiera (últimos 6 meses)</h3>
         <div class="chart-content">
           <div class="bars" id="graficaFinanzas">
             <div 
@@ -78,7 +78,7 @@
 
       <!-- Tabla de Transacciones -->
       <div class="tabla">
-        <h3>📋 Tus transacciones recientes</h3>
+        <h3><Icono nombre="lista" /> Tus transacciones recientes</h3>
         <table>
           <thead>
             <tr>
@@ -126,13 +126,13 @@ const error = ref('');
 
 // Items del menú (Conectados a tu Router)
 const menuItems = ref([
-  { text: 'Inicio', icon: '🏠', routeName: 'admin-inicio', active: true },
-  { text: 'Usuarios', icon: '👥', routeName: 'admin-usuarios', active: false },
-  { text: 'Categorías', icon: '🏷️', routeName: 'admin-categorias', active: false },
-  { text: 'Finanzas', icon: '💰', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
-  { text: 'Reportes', icon: '📊', routeName: 'admin-reportes', active: false },
-  { text: 'Metas', icon: '🎯', routeName: 'admin-metas', active: false },
-  { text: 'Configuración', icon: '⚙️', routeName: 'configuracion', active: false },
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio', active: true },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios', active: false },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias', active: false },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas', active: false }, // O el nombre que uses para finanzas
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes', active: false },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas', active: false },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion', active: false },
 ]);
 
 // Datos Reactivos
@@ -921,7 +921,7 @@ form label {
 }
 
 .presupuesto-header h2::before {
-    content: "📋";
+    content: none;
     font-size: 24px;
 }
 

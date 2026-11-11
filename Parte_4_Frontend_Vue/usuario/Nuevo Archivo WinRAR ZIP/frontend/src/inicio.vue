@@ -241,7 +241,7 @@ onMounted(async () => {
           <h2>¡Bienvenido de nuevo, {{ usuario.nombre }}!</h2>
           <p>Esto es un resumen de tus finanzas personales.</p>
         </div>
-        <div class="welcome-illustration">👨‍💻💰</div>
+        <div class="welcome-illustration"><Icono nombre="freelance" /><Icono nombre="monedas" /></div>
       </section>
 
       <section class="stat-cards">
@@ -292,7 +292,7 @@ onMounted(async () => {
           </div>
 
           <div v-else class="no-goals">
-            <div class="empty-icon">📁</div>
+            <div class="empty-icon"><Icono nombre="carpeta" /></div>
             <p>No hay metas a completar</p>
           </div>
         </section>
@@ -337,7 +337,7 @@ onMounted(async () => {
                     </div>
                     
                     <button @click.stop="eliminarRecurrente(p.id)" class="btn-delete-small" title="Eliminar">
-                      🗑️
+                      <Icono nombre="papelera" />
                     </button>
                   </div>
                 </div>
@@ -354,7 +354,7 @@ onMounted(async () => {
 
     <div v-if="mostrarModalRecurrente" class="modal-overlay">
       <div class="modal-content">
-        <h3>{{ nuevoRecurrente.id ? '📝 Editar' : '➕ Programar' }} Gasto</h3>
+        <h3><Icono nombre="programar" /> {{ nuevoRecurrente.id ? 'Editar' : 'Programar' }} Gasto</h3>
         <div class="form-group">
           <label>Descripción</label>
           <input v-model="nuevoRecurrente.descripcion" type="text" placeholder="Ej: Pago de Internet">
@@ -390,7 +390,7 @@ onMounted(async () => {
 
     <div v-if="mostrarModalPago" class="modal-overlay">
       <div class="modal-content">
-        <h3>💰 Registrar Aporte</h3>
+        <h3><Icono nombre="abonar" /> Registrar Aporte</h3>
         <p>Vas a abonar al servicio: <b>{{ pagoSeleccionado?.descripcion || 'este servicio' }}</b></p>
         
         <div class="info-pago-fijo">
