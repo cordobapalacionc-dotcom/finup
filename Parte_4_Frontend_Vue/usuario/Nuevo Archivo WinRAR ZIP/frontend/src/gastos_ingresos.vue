@@ -11,6 +11,17 @@
         <button class="btn" @click="abrirModal">+ Nuevo Registro</button>
       </header>
 
+      <!-- CU-07 · Notificar presupuesto excedido -->
+      <div v-for="(a, i) in alertas" :key="'alerta-' + i" class="alerta-presupuesto">
+        <span>
+          ⚠️ <b>Superaste tu presupuesto {{ a.periodo }} de {{ a.categoria }}:</b>
+          llevas ${{ a.acumulado.toLocaleString() }} de ${{ a.limite.toLocaleString() }}
+          ({{ a.porcentaje }}%). Te pasaste por <b>${{ a.exceso.toLocaleString() }}</b>.
+        </span>
+        <button @click="alertas.splice(i, 1)" title="Cerrar">&times;</button>
+      </div>
+      <p v-if="mensajeExito" class="aviso-exito">{{ mensajeExito }}</p>
+
       <section class="saldo">
         <div class="saldo-box">
           <h4>Saldo Actual</h4>
@@ -62,10 +73,33 @@
         </div>
       </div>
 
+      <!-- CU-12 · Historial de transacciones con filtros -->
       <div class="table-container">
+        <div class="historial-header">
+          <h3>Historial de movimientos</h3>
+          <div class="filtros">
+            <label>Desde <input v-model="filtros.desde" type="date" :max="hoy"></label>
+            <label>Hasta <input v-model="filtros.hasta" type="date" :max="hoy"></label>
+            <label>Tipo
+              <select v-model="filtros.tipo">
+                <option value="">Todos</option>
+                <option value="ingreso">Ingresos</option>
+                <option value="gasto">Gastos</option>
+              </select>
+            </label>
+            <label>Categoría
+              <select v-model.number="filtros.categoria_id">
+                <option :value="0">Todas</option>
+                <option v-for="c in categoriasFiltro" :key="c.id" :value="c.id">{{ etiquetaCategoria(c) }}</option>
+              </select>
+            </label>
+            <button v-if="hayFiltros" class="btn-limpiar" @click="limpiarFiltros">Limpiar</button>
+          </div>
+        </div>
         <table>
           <thead>
             <tr>
+              <th>Fecha</th>
               <th>Detalle</th>
               <th>Categoría</th>
               <th>Cantidad</th>
@@ -73,15 +107,21 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in registros" :key="item.id">
+            <tr v-for="item in registrosFiltrados" :key="item.id" class="fila" @click="detalle = item">
+              <td class="fecha">{{ fechaCorta(item.fecha) }}</td>
               <td>{{ item.tipo === 'ingreso' ? '💼' : '💸' }} {{ item.nombre_ingreso || item.descripcion }}</td>
               <td>{{ nombreCategoria(item.categoria_id) }}</td>
               <td :class="item.tipo === 'ingreso' ? 'positivo' : 'negativo'">
                 {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ Number(item.monto).toLocaleString() }}
               </td>
-              <td class="opciones-celda">
-                <button v-if="!item.meta_id" class="btn-edit" @click="editarRegistro(item)">✏️</button>
-                <button class="btn-delete" @click="eliminarRegistro(item.id)">🗑️</button>
+              <td class="opciones-celda" @click.stop>
+                <button v-if="!item.meta_id" class="btn-edit" title="Editar" @click="editarRegistro(item)">✏️</button>
+                <button class="btn-delete" title="Eliminar" @click="pendienteEliminar = item">🗑️</button>
+              </td>
+            </tr>
+            <tr v-if="!registrosFiltrados.length">
+              <td colspan="5" class="sin-datos">
+                {{ registros.length ? 'Ningún movimiento coincide con los filtros.' : 'Aún no tienes transacciones registradas.' }}
               </td>
             </tr>
           </tbody>
@@ -134,7 +174,12 @@
               <label>Descripción</label>
               <input v-model="nuevoRegistro.descripcion" type="text">
             </div>
+            <div class="input-group">
+              <label>Fecha</label>
+              <input v-model="nuevoRegistro.fecha" type="date" :max="hoy">
+            </div>
           </div>
+          <p v-if="errorRegistro" class="error-registro">{{ errorRegistro }}</p>
         </div>
 
         <div class="modal-footer">
@@ -142,6 +187,48 @@
           <button class="btn-create" @click="guardarRegistro">
             {{ editandoId ? 'Actualizar' : 'Guardar' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalle de un movimiento -->
+    <div v-if="detalle" class="modal-overlay" @click.self="detalle = null">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Detalle del movimiento</h2>
+          <button class="close-btn" @click="detalle = null" type="button">&times;</button>
+        </div>
+        <dl class="detalle">
+          <dt>Tipo</dt><dd>{{ detalle.tipo === 'ingreso' ? '💼 Ingreso' : '💸 Gasto' }}</dd>
+          <dt>Monto</dt><dd :class="detalle.tipo === 'ingreso' ? 'positivo' : 'negativo'">{{ detalle.tipo === 'ingreso' ? '+' : '-' }}${{ Number(detalle.monto).toLocaleString() }}</dd>
+          <dt>Categoría</dt><dd>{{ nombreCategoria(detalle.categoria_id) }}</dd>
+          <dt>Fecha</dt><dd>{{ fechaHora(detalle.fecha) }}</dd>
+          <dt>Detalle</dt><dd>{{ detalle.descripcion || '—' }}</dd>
+          <template v-if="detalle.meta_id"><dt>Meta</dt><dd>Abono a una meta de ahorro (se edita desde Metas)</dd></template>
+        </dl>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="pendienteEliminar = detalle; detalle = null">Eliminar</button>
+          <button v-if="!detalle.meta_id" class="btn-create" @click="editarRegistro(detalle); detalle = null">Editar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmar eliminación -->
+    <div v-if="pendienteEliminar" class="modal-overlay" @click.self="pendienteEliminar = null">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>¿Eliminar movimiento?</h2>
+          <button class="close-btn" @click="pendienteEliminar = null" type="button">&times;</button>
+        </div>
+        <p>
+          Se eliminará <b>{{ pendienteEliminar.descripcion || 'este movimiento' }}</b>
+          por <b>${{ Number(pendienteEliminar.monto).toLocaleString() }}</b>.
+          Tu saldo y tus presupuestos se recalcularán.
+          <template v-if="pendienteEliminar.meta_id"> Como es un abono a una meta, ese dinero también saldrá de la meta.</template>
+        </p>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="pendienteEliminar = null">Cancelar</button>
+          <button class="btn-create btn-rojo" @click="eliminarRegistro(pendienteEliminar.id)">Eliminar</button>
         </div>
       </div>
     </div>
@@ -159,7 +246,8 @@
 <script setup>
 import MenuUsuario from './MenuUsuario.vue';
 import { ref, computed, onMounted, watch } from 'vue';
-import { categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, cargarCategorias } from './categorias';
+import { categorias, categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, cargarCategorias } from './categorias';
+import { fechaCorta } from './api';
 
 cargarCategorias();
 import { useRouter } from 'vue-router';
@@ -171,6 +259,42 @@ const mostrarModal = ref(false);
 const editandoId = ref(null);
 const escalaManual = ref(0);
 const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const hoy = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD en hora local
+
+const errorRegistro = ref('');
+const mensajeExito = ref('');
+const alertas = ref([]);
+const detalle = ref(null);
+const pendienteEliminar = ref(null);
+
+// --- FILTROS DEL HISTORIAL ---
+const filtros = ref({ desde: '', hasta: '', tipo: '', categoria_id: 0 });
+const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.hasta || filtros.value.tipo || filtros.value.categoria_id));
+const limpiarFiltros = () => { filtros.value = { desde: '', hasta: '', tipo: '', categoria_id: 0 }; };
+// Categorías que aparecen en los movimientos (incluye inactivas) del tipo elegido
+const categoriasFiltro = computed(() => {
+  const usadas = new Set(registros.value.map(r => r.categoria_id));
+  return categorias.value.filter(c => usadas.has(c.id) && (!filtros.value.tipo || c.tipo === filtros.value.tipo));
+});
+const registrosFiltrados = computed(() => registros.value.filter(r => {
+  const dia = String(r.fecha || '').slice(0, 10);
+  const f = filtros.value;
+  return (!f.desde || dia >= f.desde)
+    && (!f.hasta || dia <= f.hasta)
+    && (!f.tipo || r.tipo === f.tipo)
+    && (!f.categoria_id || r.categoria_id === f.categoria_id);
+}));
+
+const fechaHora = (texto) => {
+  if (!texto) return '';
+  const d = new Date(String(texto).replace(' ', 'T'));
+  return d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+};
+
+const avisar = (texto) => {
+  mensajeExito.value = texto;
+  setTimeout(() => { if (mensajeExito.value === texto) mensajeExito.value = ''; }, 3500);
+};
 
 
 const nuevoRegistro = ref({
@@ -179,6 +303,7 @@ const nuevoRegistro = ref({
   categoria_id: 3,
   descripcion: '', 
   nombre_ingreso: '',
+  fecha: hoy,
   usuario_id: null
 });
 
@@ -211,19 +336,25 @@ const cargarDatosDesdeDB = async (idUsuario) => {
 
 // GUARDAR CON VALIDACIÓN DE NEGATIVOS
 const guardarRegistro = async () => {
-  // Validación de seguridad para evitar errores de lógica
-  if (nuevoRegistro.value.monto < 0) {
+  errorRegistro.value = '';
+  // 3a: datos o monto inválidos
+  if (!(Number(nuevoRegistro.value.monto) > 0)) {
+    errorRegistro.value = 'El monto debe ser mayor que 0';
     return;
   }
-  if (nuevoRegistro.value.monto === 0) {
+  if (!nuevoRegistro.value.categoria_id) {
+    errorRegistro.value = 'Elige una categoría';
+    return;
+  }
+  if (nuevoRegistro.value.fecha && nuevoRegistro.value.fecha > hoy) {
+    errorRegistro.value = 'La fecha no puede ser futura';
     return;
   }
 
   const payload = { 
     ...nuevoRegistro.value, 
     usuario_id: usuario.value.id, 
-    monto: Number(nuevoRegistro.value.monto), 
-    fecha: new Date().toISOString().slice(0, 19).replace('T', ' ') 
+    monto: Number(nuevoRegistro.value.monto)
   };
 
   try {
@@ -233,15 +364,31 @@ const guardarRegistro = async () => {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(payload) 
     });
-    if (res.ok) { await cargarDatosDesdeDB(usuario.value.id); cerrarModal(); }
-  } catch (e) { console.error(e); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errorRegistro.value = data.error || 'No se pudo guardar el movimiento';
+      return;
+    }
+    await cargarDatosDesdeDB(usuario.value.id);
+    cerrarModal();
+    avisar(editandoId.value ? '✅ Movimiento actualizado' : '✅ Movimiento registrado con éxito');
+    // 5a: el gasto superó el presupuesto de la categoría
+    alertas.value = data.alertas || [];
+  } catch (e) {
+    console.error(e);
+    errorRegistro.value = 'No se pudo conectar con el servidor';
+  }
 };
 
-// ELIMINAR
+// ELIMINAR (después de confirmar)
 const eliminarRegistro = async (id) => {
   try {
     const res = await fetch(`http://localhost:3000/api/movimientos/${id}`, { method: 'DELETE' });
-    if (res.ok) cargarDatosDesdeDB(usuario.value.id);
+    if (res.ok) {
+      pendienteEliminar.value = null;
+      await cargarDatosDesdeDB(usuario.value.id);
+      avisar('🗑️ Movimiento eliminado');
+    }
   } catch (e) { console.error(e); }
 };
 
@@ -249,13 +396,15 @@ const eliminarRegistro = async (id) => {
 // LOGICA MODAL
 const abrirModal = () => {
   editandoId.value = null;
-  nuevoRegistro.value = { tipo: 'gasto', monto: 0, categoria_id: 3, descripcion: '', nombre_ingreso: '', usuario_id: usuario.value.id };
+  errorRegistro.value = '';
+  nuevoRegistro.value = { tipo: 'gasto', monto: 0, categoria_id: categoriasGasto.value[0]?.id || 3, descripcion: '', nombre_ingreso: '', fecha: hoy, usuario_id: usuario.value.id };
   mostrarModal.value = true;
 };
 
 const editarRegistro = (item) => {
   editandoId.value = item.id;
-  nuevoRegistro.value = { tipo: item.tipo, monto: item.monto, categoria_id: item.categoria_id, descripcion: item.descripcion || '', nombre_ingreso: item.nombre_ingreso || '', usuario_id: item.usuario_id };
+  errorRegistro.value = '';
+  nuevoRegistro.value = { tipo: item.tipo, monto: item.monto, categoria_id: item.categoria_id, descripcion: item.descripcion || '', nombre_ingreso: item.nombre_ingreso || '', fecha: String(item.fecha || '').slice(0, 10) || hoy, usuario_id: item.usuario_id };
   mostrarModal.value = true;
 };
 
@@ -340,5 +489,26 @@ th, td { padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7; }
 .btn-create { background: #2dbb73; color: white; border: none; padding: 10px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; }
 
 .opciones-celda button { background: none; border: none; cursor: pointer; margin-right: 8px; font-size: 1.1rem; }
+.alerta-presupuesto { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 14px 18px; border-radius: 14px; margin-bottom: 16px; }
+.alerta-presupuesto button { background: none; border: none; color: #c53030; font-size: 1.4rem; cursor: pointer; }
+.aviso-exito { background: #f0fff4; border: 1px solid #9ae6b4; color: #1a8a4a; padding: 10px 16px; border-radius: 12px; margin: 0 0 16px; }
+.error-registro { color: #e53e3e; font-size: 0.85rem; margin: 14px 0 0; }
+
+.historial-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.historial-header h3 { margin: 0; }
+.filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.filtros label { display: flex; flex-direction: column; font-size: 0.75rem; color: #718096; gap: 4px; }
+.filtros input, .filtros select { padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #4a5568; font-family: inherit; }
+.btn-limpiar { background: #edf2f7; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; color: #4a5568; }
+.fila { cursor: pointer; }
+.fila:hover td { background: #f7fafc; }
+.fecha { color: #718096; white-space: nowrap; }
+.sin-datos { text-align: center; color: #a0aec0; padding: 24px; }
+
+.detalle { display: grid; grid-template-columns: 110px 1fr; gap: 10px 16px; margin: 0; }
+.detalle dt { color: #718096; font-size: 0.85rem; }
+.detalle dd { margin: 0; color: #2d3748; }
+.btn-rojo { background: #e53e3e; }
+
 .chart-tooltip { position: fixed; background: #2d3748; color: white; padding: 5px 12px; border-radius: 8px; pointer-events: none; font-size: 0.85rem; z-index: 100; }
 </style>

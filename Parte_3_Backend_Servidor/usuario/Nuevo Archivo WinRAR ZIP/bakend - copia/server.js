@@ -40,6 +40,23 @@ if (!db.prepare('PRAGMA table_info(transacciones)').all().some((c) => c.name ===
           VALUES (OLD.id, OLD.usuario_id, OLD.monto, NEW.monto, OLD.descripcion, NEW.descripcion, 'UPDATE');
         END;`);
 }
+const tieneColumna = (tabla, columna) => db.prepare(`PRAGMA table_info(${tabla})`).all().some((c) => c.name === columna);
+// Categorías con descripción, estado (activa/inactiva) y dueño (NULL = global del administrador)
+if (!tieneColumna('categorias', 'descripcion')) db.exec('ALTER TABLE categorias ADD COLUMN descripcion TEXT');
+if (!tieneColumna('categorias', 'estado')) {
+    db.exec(`ALTER TABLE categorias ADD COLUMN estado TEXT NOT NULL DEFAULT 'activa' CHECK (estado IN ('activa','inactiva'))`);
+}
+if (!tieneColumna('categorias', 'usuario_id')) {
+    db.exec('ALTER TABLE categorias ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE');
+}
+db.exec('CREATE INDEX IF NOT EXISTS fk_categorias_usuario ON categorias(usuario_id)');
+// Cierre de sesión por inactividad
+if (!tieneColumna('sesiones', 'ultima_actividad')) db.exec('ALTER TABLE sesiones ADD COLUMN ultima_actividad TEXT');
+// Versión 1: usuarios.estado pasa a significar "cuenta habilitada / desactivada" (antes era "conectado / desconectado").
+// Todas las cuentas que existían quedan habilitadas.
+if (db.prepare('PRAGMA user_version').get().user_version < 1) {
+    db.exec(`UPDATE usuarios SET estado = 'activo'; PRAGMA user_version = 1;`);
+}
 console.log('✅ Conectado a SQLite:', DB_PATH);
 
 // Como mysql2: los campos que no llegan (undefined) se guardan como NULL
@@ -76,11 +93,13 @@ const verificarContraseña = (contraseña, guardada) => {
 };
 
 const DIAS_SESION = 7;
+// Minutos sin actividad tras los que la sesión se cierra sola
+const MINUTOS_INACTIVIDAD = Number(process.env.MINUTOS_INACTIVIDAD) || 30;
 
 const crearSesion = (usuarioId) => {
     const token = crypto.randomBytes(32).toString('hex');
     // En la base solo se guarda el hash del token
-    prepare(`INSERT INTO sesiones (usuario_id, token, fecha_expiracion) VALUES (?, ?, datetime('now','localtime', ?))`)
+    prepare(`INSERT INTO sesiones (usuario_id, token, fecha_expiracion, ultima_actividad) VALUES (?, ?, datetime('now','localtime', ?), datetime('now','localtime'))`)
         .run(usuarioId, sha256(token), `+${DIAS_SESION} days`);
     return token;
 };
@@ -91,15 +110,28 @@ app.use('/api', (req, res, next) => {
     if (RUTAS_PUBLICAS.includes(req.path)) return next();
 
     const token = (req.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const usuario = token && prepare(`
-        SELECT u.id, u.nombre, u.rol FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
-        WHERE s.token = ? AND s.fecha_expiracion > datetime('now','localtime')`).get(sha256(token));
+    const sesion = token && prepare(`
+        SELECT s.id AS sesion_id, u.id, u.nombre, u.rol, u.estado,
+               COALESCE(s.ultima_actividad, s.fecha_inicio) > datetime('now','localtime', ?) AS reciente
+        FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+        WHERE s.token = ? AND s.fecha_expiracion > datetime('now','localtime')`).get(`-${MINUTOS_INACTIVIDAD} minutes`, sha256(token));
 
-    if (!usuario) {
-        res.set('X-Sesion', 'expirada');
-        return res.status(401).json({ error: "Tu sesión no es válida o ha caducado. Inicia sesión de nuevo." });
+    // X-Sesion le dice al frontend por qué terminó la sesión (para mostrarlo en el login)
+    const rechazar = (motivo, error) => {
+        res.set('X-Sesion', motivo);
+        return res.status(401).json({ error });
+    };
+    if (!sesion) return rechazar('expirada', "Tu sesión no es válida o ha caducado. Inicia sesión de nuevo.");
+    if (sesion.estado !== 'activo') {
+        prepare('DELETE FROM sesiones WHERE usuario_id = ?').run(sesion.id);
+        return rechazar('desactivada', "Tu cuenta está desactivada. Comunícate con el administrador.");
     }
-    req.usuario = usuario;
+    if (!sesion.reciente) {
+        prepare('DELETE FROM sesiones WHERE id = ?').run(sesion.sesion_id);
+        return rechazar('inactividad', "Tu sesión se cerró por inactividad. Inicia sesión de nuevo.");
+    }
+    prepare(`UPDATE sesiones SET ultima_actividad = datetime('now','localtime') WHERE id = ?`).run(sesion.sesion_id);
+    req.usuario = { id: sesion.id, nombre: sesion.nombre, rol: sesion.rol };
     req.token = token;
     next();
 });
@@ -121,23 +153,36 @@ const noEncontrado = (res) => res.status(404).json({ error: "No encontrado" });
 
 // --- 1. USUARIOS (Login/Logout/Registro) ---
 
+const FORMATO_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const correoValido = (correo) => FORMATO_CORREO.test(String(correo || '').trim());
+// Mínimo 8 caracteres con al menos una letra y un número (lo mismo que pide el formulario de registro)
+const contraseñaValida = (c) => typeof c === 'string' && c.length >= 8 && /[a-zA-Z]/.test(c) && /[0-9]/.test(c);
+const REQUISITOS_CONTRASEÑA = "La contraseña debe tener al menos 8 caracteres, una letra y un número";
+
 app.post('/api/login', (req, res) => {
-    const { correo, contraseña } = req.body;
-    const usuario = prepare('SELECT id, nombre, rol, contraseña FROM usuarios WHERE correo = ?').get(correo);
+    const correo = String(req.body.correo || '').trim();
+    const { contraseña } = req.body;
+    if (!correo || !contraseña) return res.status(400).json({ error: "Ingresa tu correo y tu contraseña" });
+    if (!correoValido(correo)) return res.status(400).json({ error: "El formato del correo no es válido" });
+
+    const usuario = prepare('SELECT id, nombre, correo, rol, estado, contraseña FROM usuarios WHERE correo = ?').get(correo);
 
     if (!usuario || !verificarContraseña(contraseña, usuario.contraseña)) {
         return res.status(401).json({ error: "Correo o contraseña incorrectos" });
+    }
+    if (usuario.estado !== 'activo') {
+        return res.status(403).json({ error: "Tu cuenta está desactivada. Comunícate con el administrador." });
     }
 
     if (!usuario.contraseña.startsWith('scrypt$')) {
         prepare('UPDATE usuarios SET contraseña = ? WHERE id = ?').run(hashContraseña(contraseña), usuario.id);
     }
     prepare("DELETE FROM sesiones WHERE fecha_expiracion <= datetime('now','localtime')").run();
-    prepare("UPDATE usuarios SET estado = 'activo' WHERE id = ?").run(usuario.id);
 
     res.status(200).json({
         id: usuario.id,
         nombre: usuario.nombre,
+        correo: usuario.correo,
         rol: usuario.rol,
         estado: 'activo',
         token: crearSesion(usuario.id)
@@ -145,20 +190,29 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/registrar', (req, res) => {
-    const { nombre, correo, contraseña } = req.body;
+    const nombre = String(req.body.nombre || '').trim();
+    const correo = String(req.body.correo || '').trim();
+    const { contraseña, confirmacion } = req.body;
 
     if (!nombre || !correo || !contraseña) {
         return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
+    if (!correoValido(correo)) return res.status(400).json({ error: "El formato del correo no es válido" });
+    if (!contraseñaValida(contraseña)) return res.status(400).json({ error: REQUISITOS_CONTRASEÑA });
+    if (confirmacion !== undefined && confirmacion !== contraseña) {
+        return res.status(400).json({ error: "Las contraseñas no coinciden" });
+    }
+    if (prepare('SELECT 1 FROM usuarios WHERE correo = ?').get(correo)) {
+        return res.status(409).json({ error: "Ese correo ya está registrado. Inicia sesión.", existe: true });
+    }
 
-    const result = prepare(`INSERT INTO usuarios (nombre, correo, contraseña, rol, estado) VALUES (?, ?, ?, 'usuario', 'inactivo')`)
+    const result = prepare(`INSERT INTO usuarios (nombre, correo, contraseña, rol, estado) VALUES (?, ?, ?, 'usuario', 'activo')`)
         .run(nombre, correo, hashContraseña(contraseña));
     res.status(201).json({ mensaje: "Usuario registrado con éxito", id: Number(result.lastInsertRowid) });
 });
 
 app.post('/api/logout', (req, res) => {
     prepare('DELETE FROM sesiones WHERE token = ?').run(sha256(req.token));
-    prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id = ?").run(req.usuario.id);
     res.json({ mensaje: "Sesión cerrada" });
 });
 
@@ -167,6 +221,8 @@ app.put('/api/usuario/actualizar/:id', (req, res) => {
     const { nombre, correo, contraseña_actual, contraseña_nueva } = req.body;
 
     if (id !== req.usuario.id) return res.status(403).json({ error: "Solo puedes modificar tu propia cuenta" });
+    if (!String(nombre || '').trim() || !correoValido(correo)) return res.status(400).json({ error: "Escribe un nombre y un correo válido" });
+    if (contraseña_nueva && !contraseñaValida(contraseña_nueva)) return res.status(400).json({ error: REQUISITOS_CONTRASEÑA });
 
     const usuario = prepare('SELECT contraseña FROM usuarios WHERE id = ?').get(id);
     if (!usuario || !verificarContraseña(contraseña_actual, usuario.contraseña)) {
@@ -183,10 +239,126 @@ app.put('/api/usuario/actualizar/:id', (req, res) => {
 });
 
 // --- CATEGORÍAS ---
+// Globales (usuario_id NULL): las gestiona el administrador y las ven todos.
+// Propias (usuario_id = el usuario): cada usuario crea, edita, desactiva y elimina las suyas.
+// Una categoría inactiva no se ofrece para nuevos movimientos, pero sus movimientos se conservan.
 
+const CATEGORIA_SISTEMA = 'Ahorro para metas'; // la usan los abonos a metas: no se puede tocar
+const COLUMNAS_CATEGORIA = `c.id, c.nombre, c.tipo, c.descripcion, c.estado, c.usuario_id,
+    (SELECT COUNT(*) FROM transacciones t WHERE t.categoria_id = c.id) AS movimientos`;
+// Condición SQL: categorías que ve el usuario (globales + las suyas)
+const VISIBLE = '(c.usuario_id IS NULL OR c.usuario_id = ?)';
+
+const normalizar = (texto) => String(texto || '').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const categoriaVisible = (usuarioId, id) =>
+    prepare(`SELECT * FROM categorias c WHERE c.id = ? AND ${VISIBLE}`).get(id, usuarioId);
+
+// ¿Ya existe una categoría con ese nombre? Para un usuario: entre las globales y las suyas. Para una global: entre las globales.
+const nombreDuplicado = (nombre, usuarioId, excluirId = 0) => prepare(
+    `SELECT nombre FROM categorias WHERE id != ? AND (usuario_id IS NULL OR usuario_id = ?)`
+).all(excluirId, usuarioId).some((c) => normalizar(c.nombre) === normalizar(nombre));
+
+// Valida los datos de una categoría. Devuelve el mensaje de error o null.
+const validarCategoria = ({ nombre, tipo }) => {
+    if (!String(nombre || '').trim()) return "El nombre de la categoría es obligatorio";
+    if (String(nombre).trim().length > 50) return "El nombre no puede tener más de 50 caracteres";
+    if (!['ingreso', 'gasto'].includes(tipo)) return "El tipo debe ser ingreso o gasto";
+    return null;
+};
+
+const usoDeCategoria = (id) => prepare(`SELECT
+    (SELECT COUNT(*) FROM transacciones WHERE categoria_id = ?) +
+    (SELECT COUNT(*) FROM presupuestos WHERE categoria_id = ?) +
+    (SELECT COUNT(*) FROM transacciones_recurrentes WHERE categoria_id = ?) AS usos`).get(id, id, id).usos;
+
+const crearCategoria = (res, usuarioId, body) => {
+    const error = validarCategoria(body);
+    if (error) return res.status(400).json({ error });
+    if (nombreDuplicado(body.nombre, usuarioId)) return res.status(409).json({ error: "Ya existe una categoría con ese nombre" });
+    const result = prepare('INSERT INTO categorias (nombre, tipo, descripcion, estado, usuario_id) VALUES (?, ?, ?, ?, ?)')
+        .run(String(body.nombre).trim(), body.tipo, String(body.descripcion || '').trim() || null, 'activa', usuarioId);
+    res.status(201).json({ mensaje: "Categoría creada", id: Number(result.lastInsertRowid) });
+};
+
+const editarCategoria = (res, categoria, body) => {
+    if (!categoria) return noEncontrado(res);
+    if (categoria.nombre === CATEGORIA_SISTEMA) return res.status(400).json({ error: "Esta categoría la usa el sistema y no se puede modificar" });
+    const datos = { nombre: body.nombre ?? categoria.nombre, tipo: body.tipo ?? categoria.tipo };
+    const error = validarCategoria(datos);
+    if (error) return res.status(400).json({ error });
+    if (nombreDuplicado(datos.nombre, categoria.usuario_id, categoria.id)) {
+        return res.status(409).json({ error: "Ya existe una categoría con ese nombre" });
+    }
+    if (datos.tipo !== categoria.tipo && usoDeCategoria(categoria.id) > 0) {
+        return res.status(400).json({ error: "No puedes cambiar el tipo: la categoría ya tiene movimientos o presupuestos" });
+    }
+    prepare('UPDATE categorias SET nombre = ?, tipo = ?, descripcion = ? WHERE id = ?')
+        .run(String(datos.nombre).trim(), datos.tipo, String(body.descripcion ?? categoria.descripcion ?? '').trim() || null, categoria.id);
+    res.json({ mensaje: "Categoría actualizada" });
+};
+
+const cambiarEstadoCategoria = (res, categoria, estado) => {
+    if (!categoria) return noEncontrado(res);
+    if (!['activa', 'inactiva'].includes(estado)) return res.status(400).json({ error: "El estado debe ser activa o inactiva" });
+    if (categoria.nombre === CATEGORIA_SISTEMA) return res.status(400).json({ error: "Esta categoría la usa el sistema y no se puede desactivar" });
+    prepare('UPDATE categorias SET estado = ? WHERE id = ?').run(estado, categoria.id);
+    res.json({ mensaje: estado === 'activa' ? "Categoría activada" : "Categoría desactivada" });
+};
+
+const eliminarCategoria = (res, categoria) => {
+    if (!categoria) return noEncontrado(res);
+    if (categoria.nombre === CATEGORIA_SISTEMA) return res.status(400).json({ error: "Esta categoría la usa el sistema y no se puede eliminar" });
+    if (usoDeCategoria(categoria.id) > 0) {
+        return res.status(400).json({ error: "La categoría tiene movimientos o presupuestos: desactívala en lugar de eliminarla" });
+    }
+    prepare('DELETE FROM categorias WHERE id = ?').run(categoria.id);
+    res.json({ mensaje: "Categoría eliminada" });
+};
+
+// Todas las que ve el usuario (activas e inactivas: las inactivas hacen falta para mostrar movimientos antiguos)
 app.get('/api/categorias', (req, res) => {
-    res.json(prepare('SELECT id, nombre, tipo FROM categorias ORDER BY tipo DESC, id').all());
+    res.json(prepare(`SELECT ${COLUMNAS_CATEGORIA}, (c.usuario_id IS NOT NULL) AS propia
+        FROM categorias c WHERE ${VISIBLE} ORDER BY c.tipo DESC, c.usuario_id IS NOT NULL, c.id`).all(req.usuario.id));
 });
+
+const categoriaPropia = (req) => prepare('SELECT * FROM categorias WHERE id = ? AND usuario_id = ?').get(req.params.id, req.usuario.id);
+
+app.post('/api/categorias', (req, res) => crearCategoria(res, req.usuario.id, req.body));
+app.put('/api/categorias/:id', (req, res) => editarCategoria(res, categoriaPropia(req), req.body));
+app.put('/api/categorias/:id/estado', (req, res) => cambiarEstadoCategoria(res, categoriaPropia(req), req.body.estado));
+app.delete('/api/categorias/:id', (req, res) => eliminarCategoria(res, categoriaPropia(req)));
+
+// --- PRESUPUESTOS: acumulado y exceso ---
+// Rango del periodo (mensual = mes calendario, semanal = lunes a domingo) que contiene la fecha dada
+const rangoPresupuesto = (periodo, fecha) => periodo === 'semanal'
+    ? prepare(`SELECT date(?, 'weekday 0', '-6 days') AS desde, date(?, 'weekday 0') AS hasta`).get(fecha, fecha)
+    : prepare(`SELECT date(?, 'start of month') AS desde, date(?, 'start of month', '+1 month', '-1 day') AS hasta`).get(fecha, fecha);
+
+// Presupuesto.calcularAcumulado(), estaExcedido() y calcularExceso() en una sola consulta
+const estadoPresupuesto = (presupuesto, fecha) => {
+    const { desde, hasta } = rangoPresupuesto(presupuesto.periodo, fecha);
+    const acumulado = prepare(`SELECT IFNULL(SUM(monto), 0) AS total FROM transacciones
+        WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND date(fecha) BETWEEN ? AND ?`)
+        .get(presupuesto.usuario_id, presupuesto.categoria_id, desde, hasta).total;
+    const limite = presupuesto.monto_limite;
+    return {
+        acumulado,
+        limite,
+        excedido: acumulado > limite,
+        exceso: Math.max(acumulado - limite, 0),
+        porcentaje: limite > 0 ? Math.round((acumulado / limite) * 100) : 0,
+        desde,
+        hasta
+    };
+};
+
+// Presupuesto.notificarExceso(): alertas de los presupuestos de esa categoría que quedaron excedidos
+const alertasPresupuesto = (usuarioId, categoriaId, fecha) => prepare(`
+    SELECT p.*, c.nombre AS categoria FROM presupuestos p JOIN categorias c ON c.id = p.categoria_id
+    WHERE p.usuario_id = ? AND p.categoria_id = ?`).all(usuarioId, categoriaId)
+    .map((p) => ({ categoria: p.categoria, periodo: p.periodo, ...estadoPresupuesto(p, fecha) }))
+    .filter((a) => a.excedido);
 
 // --- 2. MOVIMIENTOS / TRANSACCIONES ---
 
@@ -204,24 +376,65 @@ app.get('/api/movimientos/:usuario_id', mismoUsuario, (req, res) => {
                  FROM transacciones WHERE usuario_id = ? ORDER BY fecha DESC`).all(req.params.usuario_id));
 });
 
+const hoyLocal = () => prepare(`SELECT date('now','localtime') AS hoy`).get().hoy;
+const esFecha = (texto) => /^\d{4}-\d{2}-\d{2}$/.test(texto || '') && !Number.isNaN(new Date(`${texto}T00:00:00`).getTime());
+
+// Transaccion.validarDatos(): devuelve { error } o los datos listos para guardar
+const validarTransaccion = (req, anterior = null) => {
+    const { tipo, categoria_id, descripcion, nombre_ingreso } = req.body;
+    const monto = Number(req.body.monto);
+    if (!['ingreso', 'gasto'].includes(tipo)) return { error: "Datos incorrectos: el tipo debe ser ingreso o gasto" };
+    if (!Number.isFinite(monto) || monto <= 0) return { error: "Datos incorrectos: el monto debe ser mayor que 0" };
+    const categoria = categoriaVisible(req.usuario.id, categoria_id);
+    if (!categoria) return { error: "Datos incorrectos: elige una categoría válida" };
+    if (categoria.tipo !== tipo) return { error: `Datos incorrectos: la categoría ${categoria.nombre} es de ${categoria.tipo}s` };
+    if (categoria.nombre === CATEGORIA_SISTEMA) return { error: "Los abonos a metas se hacen desde la sección Metas" };
+    // Una categoría inactiva no admite movimientos nuevos (sí se pueden editar los que ya la tenían)
+    if (categoria.estado !== 'activa' && categoria.id !== anterior?.categoria_id) {
+        return { error: "Datos incorrectos: la categoría está desactivada" };
+    }
+    let fecha = req.body.fecha ? String(req.body.fecha).slice(0, 10) : null;
+    if (fecha && !esFecha(fecha)) return { error: "Datos incorrectos: la fecha no es válida" };
+    if (fecha && fecha > hoyLocal()) return { error: "Datos incorrectos: la fecha no puede ser futura" };
+    return { tipo, categoria_id: categoria.id, monto, fecha, detalle: String(nombre_ingreso || descripcion || '').trim() || null };
+};
+
+// Fecha elegida + hora actual; si no se eligió fecha, ahora
+const FECHA_SQL = `COALESCE(? || ' ' || time('now','localtime'), datetime('now','localtime'))`;
+
 app.post('/api/movimientos', (req, res) => {
-    const { tipo, categoria_id, monto, descripcion, nombre_ingreso } = req.body;
-    const detalle = nombre_ingreso || descripcion || null;
-    const result = prepare(`INSERT INTO transacciones (usuario_id, tipo, categoria_id, monto, descripcion) VALUES (?, ?, ?, ?, ?)`)
-        .run(req.usuario.id, tipo, categoria_id, monto, detalle);
-    res.status(201).json({ mensaje: "Guardado", id: Number(result.lastInsertRowid) });
+    const datos = validarTransaccion(req);
+    if (datos.error) return res.status(400).json({ error: datos.error });
+    const result = prepare(`INSERT INTO transacciones (usuario_id, tipo, categoria_id, monto, descripcion, fecha) VALUES (?, ?, ?, ?, ?, ${FECHA_SQL})`)
+        .run(req.usuario.id, datos.tipo, datos.categoria_id, datos.monto, datos.detalle, datos.fecha);
+    const id = Number(result.lastInsertRowid);
+    const { fecha } = prepare('SELECT date(fecha) AS fecha FROM transacciones WHERE id = ?').get(id);
+    res.status(201).json({
+        mensaje: "Movimiento registrado con éxito",
+        id,
+        saldo: saldoDe(req.usuario.id),
+        alertas: datos.tipo === 'gasto' ? alertasPresupuesto(req.usuario.id, datos.categoria_id, fecha) : []
+    });
 });
 
 app.put('/api/movimientos/:id', (req, res) => {
-    const actual = prepare('SELECT meta_id FROM transacciones WHERE id = ? AND usuario_id = ?').get(req.params.id, req.usuario.id);
+    const actual = prepare('SELECT meta_id, categoria_id FROM transacciones WHERE id = ? AND usuario_id = ?').get(req.params.id, req.usuario.id);
     if (!actual) return noEncontrado(res);
     if (actual.meta_id) return res.status(400).json({ error: "Este movimiento es un aporte a una meta: cámbialo desde Metas" });
-    const { tipo, categoria_id, monto, descripcion, nombre_ingreso } = req.body;
-    const detalle = nombre_ingreso || descripcion || 'Sin detalle';
-    const result = prepare(`UPDATE transacciones SET tipo = ?, categoria_id = ?, monto = ?, descripcion = ? WHERE id = ? AND usuario_id = ?`)
-        .run(tipo, categoria_id, monto, detalle, req.params.id, req.usuario.id);
+    const datos = validarTransaccion(req, actual);
+    if (datos.error) return res.status(400).json({ error: datos.error });
+    // Si no llega fecha, se conserva la que tenía
+    const result = prepare(`UPDATE transacciones SET tipo = ?, categoria_id = ?, monto = ?, descripcion = ?,
+            fecha = CASE WHEN ? IS NULL THEN fecha ELSE ? || ' ' || time(fecha) END
+        WHERE id = ? AND usuario_id = ?`)
+        .run(datos.tipo, datos.categoria_id, datos.monto, datos.detalle || 'Sin detalle', datos.fecha, datos.fecha, req.params.id, req.usuario.id);
     if (result.changes === 0) return noEncontrado(res);
-    res.json({ mensaje: "Actualizado correctamente" });
+    const { fecha } = prepare('SELECT date(fecha) AS fecha FROM transacciones WHERE id = ?').get(req.params.id);
+    res.json({
+        mensaje: "Actualizado correctamente",
+        saldo: saldoDe(req.usuario.id),
+        alertas: datos.tipo === 'gasto' ? alertasPresupuesto(req.usuario.id, datos.categoria_id, fecha) : []
+    });
 });
 
 app.delete('/api/movimientos/:id', (req, res) => {
@@ -267,7 +480,7 @@ const aportarAMeta = (usuarioId, meta, monto) => {
     if (!(monto > 0)) return;
     const saldo = saldoDe(usuarioId);
     if (monto > saldo) throw new SaldoInsuficiente(saldo);
-    const categoria = prepare(`SELECT id FROM categorias WHERE nombre = 'Ahorro para metas' AND tipo = 'gasto'`).get();
+    const categoria = prepare(`SELECT id FROM categorias WHERE nombre = 'Ahorro para metas' AND tipo = 'gasto' AND usuario_id IS NULL`).get();
     prepare(`INSERT INTO transacciones (usuario_id, tipo, categoria_id, monto, descripcion, meta_id) VALUES (?, 'gasto', ?, ?, ?, ?)`)
         .run(usuarioId, categoria.id, monto, `Abono a meta: ${meta.nombre}`, meta.id);
     prepare('UPDATE metas SET monto_actual = monto_actual + ? WHERE id = ?').run(monto, meta.id);
@@ -320,6 +533,22 @@ const eliminarMeta = (meta) => enTransaccion(() => {
     return devuelto;
 });
 
+// Meta.validarDatos(): nombre, monto objetivo > 0 y fecha límite que no haya pasado.
+// Al editar, una fecha límite que no cambió se acepta aunque ya haya pasado.
+const validarMeta = (body, anterior = null) => {
+    if (!String(body.nombre || '').trim()) return "El nombre de la meta es obligatorio";
+    if (!(Number(body.monto_objetivo) > 0)) return "El monto objetivo debe ser mayor que 0";
+    if (Number(body.monto_actual) < 0) return "El ahorro no puede ser negativo";
+    const fecha = body.fecha_limite ? String(body.fecha_limite).slice(0, 10) : null;
+    if (!fecha) return anterior ? null : "La fecha límite es obligatoria";
+    if (!esFecha(fecha)) return "La fecha límite no es válida";
+    if (fecha < hoyLocal() && fecha !== String(anterior?.fecha_limite || '').slice(0, 10)) return "La fecha límite ya pasó";
+    return null;
+};
+
+// Respuesta de un abono: avisa si con él la meta quedó cumplida
+const metaCumplida = (antes, despues) => antes.monto_actual < antes.monto_objetivo && despues.monto_actual >= despues.monto_objetivo;
+
 const metaPropia = (req, id) => prepare('SELECT * FROM metas WHERE id = ? AND usuario_id = ?').get(id, req.usuario.id);
 
 app.get('/api/metas/:usuario_id', mismoUsuario, (req, res) => {
@@ -331,9 +560,13 @@ app.post('/api/metas', (req, res) => {
     if (id) {
         const meta = metaPropia(req, id);
         if (!meta) return noEncontrado(res);
+        const error = validarMeta(req.body, meta);
+        if (error) return res.status(400).json({ error });
         actualizarMeta(req.usuario.id, meta, req.body);
         return res.json({ mensaje: "Meta actualizada.", saldo: saldoDe(req.usuario.id) });
     }
+    const error = validarMeta(req.body);
+    if (error) return res.status(400).json({ error });
     const nuevoId = crearMeta(req.usuario.id, req.body);
     res.status(201).json({ mensaje: "Meta creada.", id: nuevoId, saldo: saldoDe(req.usuario.id) });
 });
@@ -345,9 +578,12 @@ app.post('/api/metas/:id/abonar', (req, res) => {
     const meta = metaPropia(req, req.params.id);
     if (!meta) return noEncontrado(res);
     enTransaccion(() => aportarAMeta(req.usuario.id, meta, monto));
+    const actualizada = prepare('SELECT * FROM metas WHERE id = ?').get(meta.id);
+    const cumplida = metaCumplida(meta, actualizada);
     res.json({
-        mensaje: "Abono registrado",
-        meta: prepare('SELECT * FROM metas WHERE id = ?').get(meta.id),
+        mensaje: cumplida ? `¡Felicidades! Cumpliste la meta "${meta.nombre}"` : "Abono registrado",
+        cumplida,
+        meta: actualizada,
         saldo: saldoDe(req.usuario.id)
     });
 });
@@ -382,25 +618,45 @@ app.delete('/api/metas/:id', (req, res) => {
 
 // --- 4. PRESUPUESTOS ---
 
+// Presupuesto.recalcular(): el gasto acumulado (monto_actual) se calcula con los movimientos del periodo actual
 app.get('/api/presupuestos/:usuario_id', mismoUsuario, (req, res) => {
-    res.json(prepare(`SELECT p.*, c.nombre as categoria_nombre FROM presupuestos p JOIN categorias c ON p.categoria_id = c.id WHERE p.usuario_id = ?`)
-        .all(req.params.usuario_id));
+    const hoy = hoyLocal();
+    const lista = prepare(`SELECT p.*, c.nombre as categoria_nombre FROM presupuestos p JOIN categorias c ON p.categoria_id = c.id WHERE p.usuario_id = ?`)
+        .all(req.params.usuario_id)
+        .map((p) => {
+            const estado = estadoPresupuesto(p, hoy);
+            if (estado.acumulado !== p.monto_actual) prepare('UPDATE presupuestos SET monto_actual = ? WHERE id = ?').run(estado.acumulado, p.id);
+            return { ...p, monto_actual: estado.acumulado, ...estado };
+        });
+    res.json(lista);
 });
 
+// Presupuesto.establecer() con Presupuesto.validarMonto()
 app.post('/api/presupuestos', (req, res) => {
-    const { id, categoria_id, monto_limite, monto_actual, periodo } = req.body;
+    const { id, categoria_id } = req.body;
+    const monto_limite = Number(req.body.monto_limite);
+    const periodo = req.body.periodo || 'mensual';
 
-    if (!categoria_id) return res.status(400).json({ error: "categoria_id es requerido" });
+    if (!Number.isFinite(monto_limite) || monto_limite <= 0) {
+        return res.status(400).json({ error: "Monto inválido: el límite del presupuesto debe ser mayor que 0" });
+    }
+    if (!['mensual', 'semanal'].includes(periodo)) return res.status(400).json({ error: "El periodo debe ser mensual o semanal" });
+    const categoria = categoriaVisible(req.usuario.id, categoria_id);
+    if (!categoria || categoria.tipo !== 'gasto') return res.status(400).json({ error: "Elige una categoría de gasto válida" });
+    const repetido = prepare('SELECT id FROM presupuestos WHERE usuario_id = ? AND categoria_id = ? AND periodo = ? AND id != ?')
+        .get(req.usuario.id, categoria.id, periodo, Number(id) || 0);
+    if (repetido) return res.status(409).json({ error: `Ya tienes un presupuesto ${periodo} para ${categoria.nombre}: edítalo` });
 
+    const acumulado = estadoPresupuesto({ usuario_id: req.usuario.id, categoria_id: categoria.id, periodo, monto_limite }, hoyLocal()).acumulado;
     if (id) {
         const result = prepare(`UPDATE presupuestos SET categoria_id = ?, monto_limite = ?, monto_actual = ?, periodo = ? WHERE id = ? AND usuario_id = ?`)
-            .run(categoria_id, monto_limite, monto_actual || 0, periodo || 'mensual', id, req.usuario.id);
+            .run(categoria.id, monto_limite, acumulado, periodo, id, req.usuario.id);
         if (result.changes === 0) return noEncontrado(res);
         res.json({ mensaje: "Presupuesto actualizado" });
     } else {
         const result = prepare(`INSERT INTO presupuestos (usuario_id, categoria_id, monto_limite, monto_actual, periodo) VALUES (?, ?, ?, ?, ?)`)
-            .run(req.usuario.id, categoria_id, monto_limite, monto_actual || 0, periodo || 'mensual');
-        res.status(201).json({ mensaje: "Presupuesto creado", id: Number(result.lastInsertRowid) });
+            .run(req.usuario.id, categoria.id, monto_limite, acumulado, periodo);
+        res.status(201).json({ mensaje: "Presupuesto guardado", id: Number(result.lastInsertRowid) });
     }
 });
 
@@ -463,21 +719,37 @@ const SUMAS = `
     IFNULL(SUM(CASE WHEN tipo = 'gasto' THEN monto END), 0) AS gastos`;
 
 // El dinero que ve el administrador es solo el suyo: cada cuenta ve únicamente sus movimientos.
-// Filtro por el usuario que consulta y, opcionalmente, por los últimos ?dias=N
-const filtroDias = (req) => {
+// Periodo del reporte: ?mes=YYYY-MM, ?anio=YYYY o los últimos ?dias=N. Sin ninguno: todo. Devuelve { desde, hasta } o null.
+const rangoReporte = (req) => {
+    const { mes, anio } = req.query;
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(mes || '')) {
+        return prepare(`SELECT date(? || '-01') AS desde, date(? || '-01', '+1 month', '-1 day') AS hasta`).get(mes, mes);
+    }
+    if (/^\d{4}$/.test(anio || '')) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` };
     const dias = parseInt(req.query.dias, 10);
-    return dias > 0
-        ? { where: `WHERE usuario_id = ? AND date(fecha) > date('now','localtime', ?)`, params: [req.usuario.id, `-${dias} days`] }
-        : { where: 'WHERE usuario_id = ?', params: [req.usuario.id] };
+    if (dias > 0) return prepare(`SELECT date('now','localtime', ?) AS desde, date('now','localtime') AS hasta`).get(`-${dias - 1} days`);
+    return null;
+};
+
+// Filtro por el usuario que consulta y el periodo pedido. "col" es la columna de fecha (con alias si hace falta).
+const filtroPeriodo = (req, col = 'fecha') => {
+    const rango = rangoReporte(req);
+    return rango
+        ? { cond: `AND date(${col}) BETWEEN ? AND ?`, params: [rango.desde, rango.hasta], rango }
+        : { cond: '', params: [], rango: null };
 };
 
 // Variación en % de este mes frente al anterior (null si el mes anterior fue 0)
 const variacion = (actual, anterior) => (anterior ? Math.round(((actual - anterior) / anterior) * 100) : null);
 
 app.get(['/api/admin/resumen', '/api/reportes/resumen'], (req, res) => {
-    const f = filtroDias(req);
-    const totales = prepare(`SELECT ${SUMAS}, COUNT(*) AS transacciones FROM transacciones ${f.where}`).get(...f.params);
-    const usuarios = prepare(`SELECT COUNT(*) AS total, IFNULL(SUM(estado = 'activo'), 0) AS conectados FROM usuarios`).get();
+    const f = filtroPeriodo(req);
+    const totales = prepare(`SELECT ${SUMAS}, COUNT(*) AS transacciones FROM transacciones WHERE usuario_id = ? ${f.cond}`).get(req.usuario.id, ...f.params);
+    // Conectados = cuentas con una sesión vigente y con actividad reciente
+    const usuarios = prepare(`SELECT COUNT(*) AS total,
+        (SELECT COUNT(DISTINCT usuario_id) FROM sesiones WHERE fecha_expiracion > datetime('now','localtime')
+            AND COALESCE(ultima_actividad, fecha_inicio) > datetime('now','localtime', ?)) AS conectados
+        FROM usuarios`).get(`-${MINUTOS_INACTIVIDAD} minutes`);
     const metas = prepare(`SELECT COUNT(*) AS total, IFNULL(SUM(monto_actual >= monto_objetivo), 0) AS cumplidas FROM metas WHERE usuario_id = ?`).get(req.usuario.id);
 
     const mes = (desplazamiento) => prepare(`
@@ -490,6 +762,8 @@ app.get(['/api/admin/resumen', '/api/reportes/resumen'], (req, res) => {
 
     const esAdmin = req.usuario.rol === 'admin';
     res.json({
+        desde: f.rango?.desde || null,
+        hasta: f.rango?.hasta || null,
         usuarios: esAdmin ? usuarios.total : null,
         usuarios_conectados: esAdmin ? usuarios.conectados : null,
         ingresos: totales.ingresos,
@@ -513,20 +787,35 @@ const fechaLocal = (d) => d.toLocaleDateString('sv-SE'); // YYYY-MM-DD
 
 app.get(['/api/admin/serie', '/api/reportes/serie'], (req, res) => {
     const hoy = new Date();
-    const meses = Math.min(parseInt(req.query.meses, 10) || 0, 24);
-    const dias = Math.min(parseInt(req.query.dias, 10) || 7, 366);
-    const agrupar = meses ? 'mes' : (req.query.agrupar === 'semana' ? 'semana' : 'dia');
-
-    const inicio = meses
-        ? new Date(hoy.getFullYear(), hoy.getMonth() - meses + 1, 1)
-        : new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dias + 1);
+    let inicio, fin = hoy, agrupar, dias = 0;
+    const { mes, anio } = req.query;
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(mes || '')) {
+        // Un mes concreto: un grupo por día
+        const [a, m] = mes.split('-').map(Number);
+        inicio = new Date(a, m - 1, 1);
+        fin = new Date(a, m, 0);
+        agrupar = 'dia';
+        dias = 31;
+    } else if (/^\d{4}$/.test(anio || '')) {
+        // Un año concreto: un grupo por mes
+        inicio = new Date(Number(anio), 0, 1);
+        fin = new Date(Number(anio), 11, 31);
+        agrupar = 'mes';
+    } else {
+        const meses = Math.min(parseInt(req.query.meses, 10) || 0, 24);
+        dias = Math.min(parseInt(req.query.dias, 10) || 7, 366);
+        agrupar = meses ? 'mes' : (req.query.agrupar === 'semana' ? 'semana' : 'dia');
+        inicio = meses
+            ? new Date(hoy.getFullYear(), hoy.getMonth() - meses + 1, 1)
+            : new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dias + 1);
+    }
 
     const porDia = new Map(prepare(`
         SELECT date(fecha) AS dia, ${SUMAS} FROM transacciones
-        WHERE usuario_id = ? AND date(fecha) >= ? GROUP BY dia`).all(req.usuario.id, fechaLocal(inicio)).map((f) => [f.dia, f]));
+        WHERE usuario_id = ? AND date(fecha) BETWEEN ? AND ? GROUP BY dia`).all(req.usuario.id, fechaLocal(inicio), fechaLocal(fin)).map((f) => [f.dia, f]));
 
     const grupos = [];
-    for (let d = new Date(inicio), i = 0; d <= hoy; d.setDate(d.getDate() + 1), i++) {
+    for (let d = new Date(inicio), i = 0; d <= fin; d.setDate(d.getDate() + 1), i++) {
         let clave, etiqueta;
         if (agrupar === 'mes') {
             clave = `${d.getFullYear()}-${d.getMonth()}`;
@@ -547,36 +836,43 @@ app.get(['/api/admin/serie', '/api/reportes/serie'], (req, res) => {
 });
 
 app.get(['/api/admin/gastos-categoria', '/api/reportes/gastos-categoria'], (req, res) => {
-    const dias = parseInt(req.query.dias, 10);
-    const condicionDias = dias > 0 ? `AND date(t.fecha) > date('now','localtime', ?)` : '';
-    const params = dias > 0 ? [req.usuario.id, `-${dias} days`] : [req.usuario.id];
+    const f = filtroPeriodo(req, 't.fecha');
     res.json(prepare(`
         SELECT c.id, c.nombre, IFNULL(SUM(t.monto), 0) AS monto
         FROM categorias c
-        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' AND t.oculto_reporte = 0 AND t.usuario_id = ? ${condicionDias}
-        WHERE c.tipo = 'gasto'
-        GROUP BY c.id ORDER BY monto DESC`).all(...params));
+        LEFT JOIN transacciones t ON t.categoria_id = c.id AND t.tipo = 'gasto' AND t.oculto_reporte = 0 AND t.usuario_id = ? ${f.cond}
+        WHERE c.tipo = 'gasto' AND ${VISIBLE}
+        GROUP BY c.id ORDER BY monto DESC`).all(req.usuario.id, ...f.params, req.usuario.id));
 });
 
 // Quita del reporte "Gastos por categoría" los gastos propios de una categoría (opcionalmente solo los de los últimos ?dias=N).
 // No borra los movimientos: el dinero gastado sigue descontado del saldo y los gastos siguen en el historial.
 // Los abonos a metas no se quitan aquí: se sacan desde la meta.
 app.delete(['/api/admin/gastos-categoria/:id', '/api/reportes/gastos-categoria/:id'], (req, res) => {
-    const categoria = prepare(`SELECT * FROM categorias WHERE id = ? AND tipo = 'gasto'`).get(req.params.id);
-    if (!categoria) return noEncontrado(res);
+    const categoria = categoriaVisible(req.usuario.id, req.params.id);
+    if (!categoria || categoria.tipo !== 'gasto') return noEncontrado(res);
     if (categoria.nombre === 'Ahorro para metas') {
         return res.status(400).json({ error: "El ahorro de tus metas se saca desde la sección Metas" });
     }
-    const dias = parseInt(req.query.dias, 10);
-    const condicionDias = dias > 0 ? `AND date(fecha) > date('now','localtime', ?)` : '';
-    const params = dias > 0 ? [req.usuario.id, categoria.id, `-${dias} days`] : [req.usuario.id, categoria.id];
-    const filtro = `transacciones WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND meta_id IS NULL AND oculto_reporte = 0 ${condicionDias}`;
+    const f = filtroPeriodo(req);
+    const params = [req.usuario.id, categoria.id, ...f.params];
+    const filtro = `transacciones WHERE usuario_id = ? AND categoria_id = ? AND tipo = 'gasto' AND meta_id IS NULL AND oculto_reporte = 0 ${f.cond}`;
     const resultado = enTransaccion(() => {
         const { cantidad, monto } = prepare(`SELECT COUNT(*) AS cantidad, IFNULL(SUM(monto), 0) AS monto FROM ${filtro}`).get(...params);
         prepare(`UPDATE ${filtro.replace('transacciones WHERE', 'transacciones SET oculto_reporte = 1 WHERE')}`).run(...params);
         return { quitados: cantidad, monto };
     });
     res.json({ mensaje: "Gastos quitados del reporte", ...resultado, saldo: saldoDe(req.usuario.id) });
+});
+
+// Movimientos propios del periodo pedido (?mes, ?anio o ?dias), para exportar el reporte
+app.get('/api/reportes/movimientos', (req, res) => {
+    const f = filtroPeriodo(req, 't.fecha');
+    res.json(prepare(`
+        SELECT t.id, t.tipo, t.monto, t.descripcion, t.fecha, c.nombre AS categoria
+        FROM transacciones t JOIN categorias c ON c.id = t.categoria_id
+        WHERE t.usuario_id = ? ${f.cond}
+        ORDER BY t.fecha DESC, t.id DESC LIMIT 2000`).all(req.usuario.id, ...f.params));
 });
 
 app.get('/api/admin/transacciones', (req, res) => {
@@ -601,7 +897,9 @@ app.get('/api/admin/usuarios', (req, res) => {
 app.post('/api/admin/usuarios', (req, res) => {
     const { nombre, correo, contraseña, rol } = req.body;
     if (!nombre || !correo || !contraseña) return res.status(400).json({ error: "Nombre, correo y contraseña son obligatorios" });
-    const result = prepare(`INSERT INTO usuarios (nombre, correo, contraseña, rol) VALUES (?, ?, ?, ?)`)
+    if (!correoValido(correo)) return res.status(400).json({ error: "El formato del correo no es válido" });
+    if (!contraseñaValida(contraseña)) return res.status(400).json({ error: REQUISITOS_CONTRASEÑA });
+    const result = prepare(`INSERT INTO usuarios (nombre, correo, contraseña, rol, estado) VALUES (?, ?, ?, ?, 'activo')`)
         .run(nombre, correo, hashContraseña(contraseña), rol === 'admin' ? 'admin' : 'usuario');
     res.status(201).json({ mensaje: "Usuario creado", id: Number(result.lastInsertRowid) });
 });
@@ -610,6 +908,8 @@ app.put('/api/admin/usuarios/:id', (req, res) => {
     const id = Number(req.params.id);
     const { nombre, correo, rol, contraseña } = req.body;
     if (!nombre || !correo) return res.status(400).json({ error: "Nombre y correo son obligatorios" });
+    if (!correoValido(correo)) return res.status(400).json({ error: "El formato del correo no es válido" });
+    if (contraseña && !contraseñaValida(contraseña)) return res.status(400).json({ error: REQUISITOS_CONTRASEÑA });
     if (id === req.usuario.id && rol !== 'admin') {
         return res.status(400).json({ error: "No puedes quitarte el rol de administrador a ti mismo" });
     }
@@ -620,6 +920,30 @@ app.put('/api/admin/usuarios/:id', (req, res) => {
     if (contraseña) prepare('UPDATE usuarios SET contraseña = ? WHERE id = ?').run(hashContraseña(contraseña), id);
     res.json({ mensaje: "Usuario actualizado" });
 });
+
+// Usuario.cambiarEstado(): activo = puede iniciar sesión; inactivo = cuenta desactivada
+app.put('/api/admin/usuarios/:id/estado', (req, res) => {
+    const id = Number(req.params.id);
+    const { estado } = req.body;
+    if (!['activo', 'inactivo'].includes(estado)) return res.status(400).json({ error: "El estado debe ser activo o inactivo" });
+    if (id === req.usuario.id) return res.status(400).json({ error: "No puedes desactivar tu propia cuenta" });
+    const result = prepare('UPDATE usuarios SET estado = ? WHERE id = ?').run(estado, id);
+    if (result.changes === 0) return noEncontrado(res);
+    // Sus sesiones abiertas se cierran en su siguiente petición (con el aviso de cuenta desactivada)
+    res.json({ mensaje: estado === 'activo' ? "Cuenta activada" : "Cuenta desactivada" });
+});
+
+// Categorías globales (las que ven todos los usuarios)
+const categoriaGlobal = (req) => prepare('SELECT * FROM categorias WHERE id = ? AND usuario_id IS NULL').get(req.params.id);
+
+app.get('/api/admin/categorias', (req, res) => {
+    res.json(prepare(`SELECT ${COLUMNAS_CATEGORIA}, (c.nombre = '${CATEGORIA_SISTEMA}') AS sistema
+        FROM categorias c WHERE c.usuario_id IS NULL ORDER BY c.tipo DESC, c.id`).all());
+});
+app.post('/api/admin/categorias', (req, res) => crearCategoria(res, null, req.body));
+app.put('/api/admin/categorias/:id', (req, res) => editarCategoria(res, categoriaGlobal(req), req.body));
+app.put('/api/admin/categorias/:id/estado', (req, res) => cambiarEstadoCategoria(res, categoriaGlobal(req), req.body.estado));
+app.delete('/api/admin/categorias/:id', (req, res) => eliminarCategoria(res, categoriaGlobal(req)));
 
 app.delete('/api/admin/usuarios/:id', (req, res) => {
     const id = Number(req.params.id);
@@ -647,19 +971,17 @@ app.get('/api/admin/metas', (req, res) => {
 });
 
 app.post('/api/admin/metas', (req, res) => {
-    const { nombre, monto_objetivo } = req.body;
-    if (!nombre || !(Number(monto_objetivo) > 0)) {
-        return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
-    }
+    const error = validarMeta(req.body);
+    if (error) return res.status(400).json({ error });
     const id = crearMeta(req.usuario.id, req.body);
     res.status(201).json({ mensaje: "Meta creada", id, saldo: saldoDe(req.usuario.id) });
 });
 
 app.put('/api/admin/metas/:id', (req, res) => {
-    const { nombre, monto_objetivo } = req.body;
-    if (!nombre || !(Number(monto_objetivo) > 0)) return res.status(400).json({ error: "Nombre y un monto objetivo mayor que 0 son obligatorios" });
     const meta = metaPropia(req, req.params.id);
     if (!meta) return noEncontrado(res);
+    const error = validarMeta(req.body, meta);
+    if (error) return res.status(400).json({ error });
     actualizarMeta(req.usuario.id, meta, req.body);
     res.json({ mensaje: "Meta actualizada", saldo: saldoDe(req.usuario.id) });
 });
@@ -682,7 +1004,7 @@ app.get('/api/admin/presupuestos', (req, res) => {
             IFNULL((SELECT SUM(t.monto) FROM transacciones t
                     WHERE t.categoria_id = c.id AND t.tipo = 'gasto' AND t.usuario_id = ?
                       AND strftime('%Y-%m', t.fecha) = ?), 0) AS gastado
-        FROM categorias c WHERE c.tipo = 'gasto' ORDER BY c.id`).all(id, id, mes));
+        FROM categorias c WHERE c.tipo = 'gasto' AND ${VISIBLE} ORDER BY c.id`).all(id, id, mes, id));
 });
 
 // Reportes guardados: cada cuenta (usuario o administrador) solo ve y borra los suyos

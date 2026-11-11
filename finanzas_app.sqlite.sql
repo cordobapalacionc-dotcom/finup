@@ -14,14 +14,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo         TEXT NOT NULL UNIQUE,
   contraseña     TEXT NOT NULL,
   rol            TEXT NOT NULL DEFAULT 'usuario' CHECK (rol IN ('admin','usuario')),
-  estado         TEXT NOT NULL DEFAULT 'inactivo' CHECK (estado IN ('activo','inactivo')),
+  -- activo = la cuenta puede iniciar sesión; inactivo = desactivada por el administrador
+  estado         TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
   fecha_registro TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
+-- usuario_id NULL = categoría global (la gestiona el administrador); con valor = categoría propia de ese usuario
 CREATE TABLE IF NOT EXISTS categorias (
-  id     INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  tipo   TEXT NOT NULL CHECK (tipo IN ('ingreso','gasto'))
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre      TEXT NOT NULL,
+  tipo        TEXT NOT NULL CHECK (tipo IN ('ingreso','gasto')),
+  descripcion TEXT,
+  estado      TEXT NOT NULL DEFAULT 'activa' CHECK (estado IN ('activa','inactiva')),
+  usuario_id  INTEGER REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS transacciones (
@@ -86,7 +91,8 @@ CREATE TABLE IF NOT EXISTS sesiones (
   usuario_id       INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   token            TEXT NOT NULL,
   fecha_inicio     TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-  fecha_expiracion TEXT
+  fecha_expiracion TEXT,
+  ultima_actividad TEXT DEFAULT (datetime('now','localtime')) -- para cerrar la sesión por inactividad
 );
 CREATE INDEX IF NOT EXISTS fk_sesiones_usuario ON sesiones(usuario_id);
 
@@ -136,4 +142,4 @@ INSERT OR IGNORE INTO categorias (id, nombre, tipo) VALUES
 
 -- Único administrador. SHA-256 de 'Admin123'.
 INSERT OR IGNORE INTO usuarios (id, nombre, correo, contraseña, rol, estado) VALUES
-(1, 'Administrador', 'admin@finanzas.com', '3b612c75a7b5048a435fb6ec81e52ff92d6d795a8b5a9c17070f6a63c97a53b2', 'admin', 'inactivo');
+(1, 'Administrador', 'admin@finanzas.com', '3b612c75a7b5048a435fb6ec81e52ff92d6d795a8b5a9c17070f6a63c97a53b2', 'admin', 'activo');

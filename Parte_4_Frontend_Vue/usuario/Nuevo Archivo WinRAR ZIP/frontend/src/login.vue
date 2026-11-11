@@ -1,9 +1,17 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { leerAvisoSesion } from './api'
 
 const router = useRouter()
 const isLoginVisible = ref(true)
+
+// Aviso cuando la sesión terminó sola (inactividad, caducada o cuenta desactivada)
+const avisoSesion = ref(leerAvisoSesion())
+// Mensajes del registro
+const errorRegistro = ref('')
+const correoYaRegistrado = ref(false)
+const exitoRegistro = ref('')
 
 // Variables para Login
 const emailLogin = ref('')
@@ -33,7 +41,19 @@ const isFormValid = computed(() => {
          passwordReg.value === confirmReg.value
 })
 
-const toggleSection = (showLogin) => { isLoginVisible.value = showLogin }
+const toggleSection = (showLogin) => {
+  isLoginVisible.value = showLogin
+  errorRegistro.value = ''
+  correoYaRegistrado.value = false
+}
+
+watch([nombreReg, emailReg, passwordReg, confirmReg], () => { errorRegistro.value = ''; correoYaRegistrado.value = false })
+
+// 4a: el correo ya existe → ofrecer iniciar sesión con ese correo
+const irAIniciarSesion = () => {
+  emailLogin.value = emailReg.value
+  toggleSection(true)
+}
 
 // --- REGISTRO CONECTADO A DB ---
 const manejarRegistro = async () => {
@@ -46,24 +66,41 @@ const manejarRegistro = async () => {
       body: JSON.stringify({ 
         nombre: nombreReg.value, 
         correo: emailReg.value, 
-        contraseña: passwordReg.value 
+        contraseña: passwordReg.value,
+        confirmacion: confirmReg.value
       })
     })
 
     const data = await response.json()
 
     if (response.ok) {
+      emailLogin.value = emailReg.value
       toggleSection(true)
+      exitoRegistro.value = '¡Cuenta creada! Ya puedes iniciar sesión.'
       nombreReg.value = emailReg.value = passwordReg.value = confirmReg.value = ''
     } else {
+      errorRegistro.value = data.error || 'No se pudo crear la cuenta'
+      correoYaRegistrado.value = Boolean(data.existe)
     }
-  } catch (error) { 
+  } catch (error) {
+    console.error('Error de registro:', error)
+    errorRegistro.value = 'No se pudo conectar con el servidor'
   }
 }
 
 // --- LOGIN CONECTADO A DB CON REDIRECCIÓN POR ROL ---
 const manejarLogin = async () => {
-  if (!emailLogin.value || !passwordLogin.value) return;
+  avisoSesion.value = ''
+  exitoRegistro.value = ''
+  // 2a: campos vacíos o formato de correo inválido
+  if (!emailLogin.value || !passwordLogin.value) {
+    errorLogin.value = 'Completa tu correo y tu contraseña'
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLogin.value.trim())) {
+    errorLogin.value = 'El formato del correo no es válido'
+    return
+  }
 
   try {
     const response = await fetch('http://localhost:3000/api/login', {
@@ -80,6 +117,7 @@ const manejarLogin = async () => {
     if (response.ok) {
       // 1. Guardamos la sesión completa en LocalStorage
       localStorage.setItem('usuario_identificado', JSON.stringify(usuario))
+      localStorage.setItem('ultima_actividad', String(Date.now()))
       
       
       // 2. Lógica de Redirección Inteligente
@@ -92,7 +130,8 @@ const manejarLogin = async () => {
       }
 
     } else {
-      errorLogin.value = 'Correo o contraseña incorrectos'
+      // 3a: credenciales incorrectas · 4a: cuenta desactivada
+      errorLogin.value = usuario.error || 'Correo o contraseña incorrectos'
     }
   } catch (error) {
     console.error("Error de login:", error)
@@ -111,6 +150,8 @@ const manejarLogin = async () => {
           <div class="logo-text">Finanzas Personales</div>
         </div>
         <h1>Iniciar sesión</h1>
+        <p v-if="avisoSesion" class="aviso-error">{{ avisoSesion }}</p>
+        <p v-if="exitoRegistro" class="aviso-exito">{{ exitoRegistro }}</p>
         <div class="input-group">
           <label>Correo electrónico</label>
           <input v-model="emailLogin" type="email" placeholder="Tu@email.com" required>
@@ -177,7 +218,12 @@ const manejarLogin = async () => {
           <div v-if="confirmReg && passwordReg !== confirmReg" class="error-message">⚠️ No coinciden</div>
         </div>
 
-        <button @click="manejarRegistro" :disabled="!isFormValid">Crear sesión</button>
+        <p v-if="errorRegistro" class="aviso-error">
+          {{ errorRegistro }}
+          <a v-if="correoYaRegistrado" href="#" @click.prevent="irAIniciarSesion">Iniciar sesión</a>
+        </p>
+
+        <button @click="manejarRegistro" :disabled="!isFormValid">Crear cuenta</button>
 
         <div id="volverLogin" @click="toggleSection(true)">
           <span class="arrow">←</span>
@@ -347,6 +393,13 @@ button:disabled {
 <style scoped>
 .aviso-error {
   color: #e74c3c;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0.75rem;
+  text-align: center;
+}
+.aviso-error a { color: #2dbb73; font-weight: 600; margin-left: 4px; }
+.aviso-exito {
+  color: #1a8a4a;
   font-size: 0.85rem;
   margin: 0.25rem 0 0.75rem;
   text-align: center;
