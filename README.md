@@ -46,9 +46,9 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 | **Inicio** | Total de usuarios y sus propios ingresos, gastos y ahorro, con la variación frente al mes anterior y gráfica de la última semana. |
 | **Usuarios** | Buscar (por nombre, correo o ID), crear, editar (incluida la contraseña), **activar o desactivar cuentas** y eliminar usuarios. Una cuenta desactivada no puede iniciar sesión. |
 | **Categorías** | Catálogo de **categorías generales** que ven todos los usuarios: crear, editar (nombre, tipo y descripción), activar/desactivar y eliminar las que no se usan. |
-| **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. |
+| **Finanzas** | Sus totales, evolución de los últimos 6 meses y sus transacciones recientes. El botón **Registrar ingreso o gasto** abre *Gastos e Ingresos* para registrar sus propios movimientos. |
 | **Reportes** | Sus estadísticas por periodo (7, 30, 90 o 365 días), gasto por categoría (se pueden **quitar los gastos de una categoría** del reporte), **reportes guardados** que se pueden desplegar y borrar, y **exportación a PDF o Excel**. |
-| **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes, y sus metas de ahorro (crear, **abonar**, **sacar dinero** cuando está cumplida, editar y eliminar). |
+| **Metas** | Sus presupuestos por categoría frente a lo gastado en el mes (**Definir** / **Editar** el límite mensual de cada categoría), y sus metas de ahorro (crear, **abonar**, **sacar dinero** cuando está cumplida, editar y eliminar). |
 
 ---
 

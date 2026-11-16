@@ -19,6 +19,7 @@
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </aside>
 
@@ -117,6 +118,7 @@
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { ref, computed, onMounted } from 'vue'
 import { api, obtenerSesion } from './api'
 

@@ -1,0 +1,81 @@
+<!--
+  Menú lateral del administrador para pantallas compartidas con el usuario (Configuración).
+  Mismas opciones, colores y botón "Cerrar Sesión" que el menú de las pantallas del administrador.
+-->
+<template>
+  <aside class="sidebar">
+    <h1>Finanzas <span>Personales</span></h1>
+    <ul>
+      <li v-for="item in menuItems" :key="item.text" :class="{ active: $route.name === item.routeName || (item.routeName === 'admin-finanzas' && $route.name === 'gastos') }">
+        <router-link :to="{ name: item.routeName }">
+          <span class="icon"><Icono :nombre="item.icon" /></span>
+          <span>{{ item.text }}</span>
+        </router-link>
+      </li>
+    </ul>
+    <div class="perfil">
+      <div class="icono"><Icono nombre="usuario" /></div>
+      <p>{{ sesion?.nombre || 'Administrador' }}</p>
+      <span>Admin</span>
+      <BotonCerrarSesion />
+    </div>
+  </aside>
+</template>
+
+<script setup>
+import { obtenerSesion } from './api'
+import BotonCerrarSesion from './BotonCerrarSesion.vue'
+
+const sesion = obtenerSesion()
+
+const menuItems = [
+  { text: 'Inicio', icon: 'inicio', routeName: 'admin-inicio' },
+  { text: 'Usuarios', icon: 'usuarios', routeName: 'admin-usuarios' },
+  { text: 'Categorías', icon: 'categoria', routeName: 'admin-categorias' },
+  { text: 'Finanzas', icon: 'finanzas', routeName: 'admin-finanzas' },
+  { text: 'Reportes', icon: 'reportes', routeName: 'admin-reportes' },
+  { text: 'Metas', icon: 'metas', routeName: 'admin-metas' },
+  { text: 'Configuración', icon: 'configuracion', routeName: 'configuracion' }
+]
+</script>
+
+<style scoped>
+.sidebar {
+  box-sizing: border-box;
+  width: 280px;
+  flex: 0 0 280px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  overflow-y: auto;
+  background: #000000;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  color: white;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Poppins', sans-serif;
+}
+.sidebar h1 { font-size: 22px; margin: 0 0 40px; text-align: center; letter-spacing: 1px; }
+.sidebar h1 span { color: #2dbb73; }
+.sidebar ul { list-style: none; flex: 1; margin: 0; padding: 0; }
+.sidebar ul li { margin-bottom: 12px; }
+.sidebar ul li a {
+  display: flex; align-items: center; gap: 14px; text-decoration: none; color: #a0aec0;
+  padding: 12px 18px; border-radius: 12px; transition: all 0.3s ease; font-size: 15px; font-weight: 500;
+}
+.sidebar ul li a:hover { color: white; background: rgba(45, 187, 115, 0.15); transform: translateX(5px); }
+.sidebar ul li.active a {
+  color: white;
+  background: linear-gradient(90deg, rgba(45, 187, 115, 0.25), transparent);
+  border-left: 4px solid #2dbb73;
+}
+.perfil { margin-top: auto; padding-top: 25px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); }
+.icono {
+  width: 55px; height: 55px; background: #2dbb73; border-radius: 50%; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 26px;
+}
+.perfil p { font-size: 15px; font-weight: 600; margin: 0; }
+.perfil span { font-size: 12px; opacity: 0.7; }
+</style>

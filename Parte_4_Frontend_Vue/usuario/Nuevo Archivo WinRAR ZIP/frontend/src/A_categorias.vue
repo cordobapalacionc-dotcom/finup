@@ -15,6 +15,7 @@
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </aside>
 
@@ -25,6 +26,7 @@
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { obtenerSesion } from './api'
 import GestionCategorias from './GestionCategorias.vue'
 
