@@ -15,7 +15,7 @@ const nombreArchivo = (datos, extension) => {
   const limpio = String(datos.archivo || datos.periodo || 'reporte')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
-  return `Reporte_FinUp_${limpio}.${extension}`
+  return `Reporte_Finup_${limpio}.${extension}`
 }
 
 // ReporteFinanciero.validarExportacion()

@@ -1,7 +1,7 @@
-PARTE 1 — INTERFAZ DEL USUARIO
+PARTE 1 — INTERFAZ DEL USUARIO (VERSIÓN ANTIGUA EN HTML)
 
-Contiene las páginas del usuario de FinanzasApp: inicio, inicio de sesión, gastos e ingresos, metas y configuración.
+Primera versión de las pantallas del usuario de Finup, hecha en HTML, CSS y JavaScript.
+Ya no se usa: no envía el token de sesión, así que no funciona con el backend actual.
 
-HTML = estructura de la pantalla. CSS = apariencia. JavaScript = comportamiento e interacción.
-
-Nota: estas páginas pueden depender de un backend y de rutas específicas. Revisa las direcciones de API en los archivos .js antes de ejecutarlas.
+La versión en uso está en Parte_4_Frontend_Vue (Vue 3 + Vite).
+Se conserva solo como historial del proyecto.

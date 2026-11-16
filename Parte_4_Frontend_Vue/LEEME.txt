@@ -1,5 +1,10 @@
-PARTE 4 — FRONTEND VUE
+PARTE 4 — FRONTEND (VUE 3 + VITE)
 
-Contiene la implementación de interfaz basada en Vue y Vite que también aparece dentro del ZIP original. Puede ser una versión distinta de las páginas tradicionales de USUARIOverdadero.
+Interfaz de Finup en uso, para usuarios y administradores. Es la versión principal;
+las Partes 1 y 2 son la versión antigua en HTML y ya no se usan.
 
-Para ejecutarla, instala las dependencias con npm install y usa el comando definido en package.json. No mezcles esta versión con la interfaz tradicional hasta confirmar cuál es la versión principal.
+- Código: usuario/Nuevo Archivo WinRAR ZIP/frontend/src
+- Se conecta al backend en http://localhost:3000/api (archivo src/api.js).
+
+Para ejecutarla: en la carpeta "frontend" corre npm install y luego npm run dev.
+En Windows, iniciar.bat (en la raíz) arranca el backend y el frontend juntos.

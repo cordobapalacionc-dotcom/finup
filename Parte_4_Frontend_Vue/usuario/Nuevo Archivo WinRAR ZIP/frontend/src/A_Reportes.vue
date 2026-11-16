@@ -339,7 +339,7 @@ const exportar = async (formato) => {
     const movimientos = await api(`/reportes/movimientos?dias=${periodoSeleccionado.value}`);
     const r = resumen.value || { ingresos: 0, gastos: 0, transacciones: 0 };
     await exportarReporte(formato, {
-      titulo: 'Reporte financiero · FinUp',
+      titulo: 'Reporte financiero · Finup',
       periodo: NOMBRE_PERIODO[periodoSeleccionado.value],
       usuario: sesion?.nombre,
       ingresos: r.ingresos,
