@@ -1,5 +1,7 @@
-PARTE 2 — PANEL DE ADMINISTRACIÓN
+PARTE 2 — PANEL DE ADMINISTRACIÓN (VERSIÓN ANTIGUA EN HTML)
 
-Contiene las páginas HTML y el CSS del panel administrativo. raiz.html es una página de entrada del proyecto.
+Primera versión de las pantallas del administrador de Finup, hecha en HTML y CSS.
+Ya no se usa: no envía el token de sesión, así que no funciona con el backend actual.
 
-HTML define las secciones y CSS define el diseño. Comprueba las rutas a imágenes, CSS y JavaScript antes de abrirlas.
+La versión en uso está en Parte_4_Frontend_Vue (Vue 3 + Vite).
+Se conserva solo como historial del proyecto.

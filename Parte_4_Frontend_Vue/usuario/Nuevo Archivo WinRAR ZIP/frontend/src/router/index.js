@@ -56,19 +56,19 @@ const router = createRouter({
       path: '/metas',
       name: 'metas',
       component: Metas,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, role: 'usuario' }
     },
     {
       path: '/reportes',
       name: 'reportes',
       component: Reportes,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, role: 'usuario' }
     },
     {
       path: '/categorias',
       name: 'categorias',
       component: Categorias,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, role: 'usuario' }
     },
     {
       path: '/admin-categorias',

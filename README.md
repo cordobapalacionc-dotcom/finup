@@ -1,4 +1,4 @@
-# 💰 FinUp — Finanzas Personales
+# 💰 Finup — Finanzas Personales
 
 Aplicación web para llevar tus finanzas personales: registra ingresos y gastos, define metas de ahorro y presupuestos, controla tus pagos recurrentes y consulta todo en gráficas. Incluye un **panel de administración** para gestionar usuarios. Cada cuenta, también la del administrador, ve **solo su propio dinero**.
 
@@ -56,7 +56,8 @@ Aplicación web para llevar tus finanzas personales: registra ingresos y gastos,
 
 | Capa | Tecnología |
 |---|---|
-| Frontend | [Vue 3](https://vuejs.org) · [Vue Router](https://router.vuejs.org) · [Vite](https://vite.dev) |
+| Frontend | [Vue 3](https://vuejs.org) · [Vue Router](https://router.vuejs.org) · [Vite](https://vite.dev) · iconos [Lucide](https://lucide.dev) |
+| Exportación | [jsPDF](https://github.com/parallax/jsPDF) + jspdf-autotable (PDF) · [write-excel-file](https://www.npmjs.com/package/write-excel-file) (Excel) |
 | Backend | [Node.js](https://nodejs.org) · [Express 5](https://expressjs.com) |
 | Base de datos | SQLite mediante el módulo integrado `node:sqlite` (no hace falta instalar ningún servidor de base de datos) |
 | Tipografía | [Poppins](https://fonts.google.com/specimen/Poppins) (Google Fonts) |
@@ -86,10 +87,15 @@ finup/
 │           ├── app.vue              # Estilos globales, paleta y tema oscuro
 │           ├── api.js               # Conexión con el backend (añade el token de sesión)
 │           ├── tema.js              # Tema claro / oscuro
+│           ├── inactividad.js       # Cierra la sesión tras 30 minutos sin actividad
 │           ├── categorias.js        # Categorías compartidas por los formularios
+│           ├── exportarReporte.js   # Exportación de reportes a PDF y Excel
+│           ├── Icono.vue            # Iconos de línea (Lucide)
+│           ├── MenuUsuario.vue, MenuAdmin.vue, BotonCerrarSesion.vue   # Menús laterales
+│           ├── GestionCategorias.vue  # Gestión de categorías (usuario y administrador)
 │           ├── router/index.js      # Rutas y protección por rol
-│           ├── login.vue, inicio.vue, gastos_ingresos.vue, metas.vue, reportes.vue, configuracion.vue
-│           └── A_inicio.vue, A_usuarios.vue, A_finanzas.vue, A_Reportes.vue, A_metas.vue   # Panel de administración
+│           ├── login.vue, inicio.vue, gastos_ingresos.vue, categorias.vue, metas.vue, reportes.vue, configuracion.vue
+│           └── A_inicio.vue, A_usuarios.vue, A_categorias.vue, A_finanzas.vue, A_Reportes.vue, A_metas.vue   # Panel de administración
 │
 ├── Parte_1_Interfaz_Usuario/        # Versión antigua en HTML (ver Limitaciones)
 └── Parte_2_Panel_Administrador/     # Versión antigua en HTML (ver Limitaciones)

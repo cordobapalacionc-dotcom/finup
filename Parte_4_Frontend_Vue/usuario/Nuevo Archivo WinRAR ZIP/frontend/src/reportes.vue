@@ -274,7 +274,7 @@ const exportar = async (formato) => {
   try {
     const movimientos = await api(`/reportes/movimientos?${consulta()}`);
     await exportarReporte(formato, {
-      titulo: 'Reporte financiero · FinUp',
+      titulo: 'Reporte financiero · Finup',
       periodo: textoPeriodo.value + (resumen.value.desde ? ` (${fechaCorta(resumen.value.desde)} - ${fechaCorta(resumen.value.hasta)})` : ''),
       archivo: textoPeriodo.value,
       usuario: sesion?.nombre,

@@ -1,7 +1,14 @@
-PARTE 3 — BACKEND
+PARTE 3 — BACKEND (API REST)
 
-Contiene el servidor Node.js/Express y el package.json que estaba en la carpeta del backend.
+Servidor de Finup hecho con Node.js y Express. Usa SQLite mediante el módulo integrado
+node:sqlite, así que no hace falta instalar ningún servidor de base de datos ni configurar
+credenciales.
 
-Este servidor gestiona solicitudes del frontend y conexión con MySQL. Para ejecutarlo, instala las dependencias con npm install y configura las credenciales de la base de datos.
+- Código: usuario/Nuevo Archivo WinRAR ZIP/bakend - copia/server.js
+- Base de datos: se crea sola la primera vez (finanzas_app.db) a partir de
+  finanzas_app.sqlite.sql, en la raíz del proyecto.
+- Requisito: Node.js 22.13 o superior.
 
-IMPORTANTE: no publiques contraseñas reales. La configuración actual debe revisarse antes de usar el sistema fuera de un entorno local. El ZIP original no mostró un archivo SQL de instalación en la lista de archivos reconocidos.
+Para ejecutarlo: en la carpeta "usuario/Nuevo Archivo WinRAR ZIP" corre npm install y luego
+npm start. El servidor queda en http://localhost:3000. En Windows, iniciar.bat (en la raíz)
+lo hace todo.
