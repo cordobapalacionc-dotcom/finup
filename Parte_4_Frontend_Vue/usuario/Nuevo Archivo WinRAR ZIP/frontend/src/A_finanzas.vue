@@ -19,14 +19,21 @@
       <div class="perfil">
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ usuario.nombre || 'Administrador' }}</p>
-        <span>{{ usuario.rol || 'Admin' }}</span>
+        <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </div>
 
     <!-- Contenido Principal -->
     <div class="contenido">
-      <h1>Finanzas</h1>
-      <p class="subtitulo">Tus ingresos y gastos</p>
+      <div class="encabezado-finanzas">
+        <div>
+          <h1>Finanzas</h1>
+          <p class="subtitulo">Tus ingresos y gastos</p>
+        </div>
+        <!-- CU-04 / CU-12: el administrador registra y consulta sus movimientos en Gastos e Ingresos -->
+        <router-link to="/gastos" class="btn-registrar"><Icono nombre="agregar" /> Registrar ingreso o gasto</router-link>
+      </div>
 
       <!-- Cards de Resumen -->
       <div class="cards">
@@ -117,6 +124,7 @@
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { ref, computed, onMounted } from 'vue';
 import { api, moneda, fechaCorta, obtenerSesion } from './api';
 
@@ -2216,4 +2224,7 @@ tr:hover {
 .bar:hover {
   filter: brightness(1.2);
 }
+.encabezado-finanzas { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.btn-registrar { display: inline-flex; align-items: center; gap: 8px; background: #2dbb73; color: white; text-decoration: none; padding: 10px 20px; border-radius: 12px; font-weight: 600; }
+.btn-registrar:hover { background: #1a8a4a; }
 </style>

@@ -19,6 +19,7 @@
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </aside>
 
@@ -47,6 +48,7 @@
                 <th>Tu presupuesto</th>
                 <th>Gastado en el mes</th>
                 <th>Progreso</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -67,6 +69,11 @@
                     <span class="porcentaje-texto" :class="getProgresoClase(cat)">{{ getPorcentaje(cat) }}%</span>
                   </div>
                   <span v-else>—</span>
+                </td>
+                <td>
+                  <button v-if="cat.nombre !== 'Ahorro para metas'" class="btn-definir" @click="abrirPresupuesto(cat)">
+                    <Icono :nombre="presupuestoDe(cat) ? 'editar' : 'agregar'" /> {{ presupuestoDe(cat) ? 'Editar' : 'Definir' }}
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -256,10 +263,27 @@
         </div>
       </form>
     </div>
+
+    <!-- Modal Definir / editar presupuesto mensual (CU-02) -->
+    <div v-if="presupuestoEditando" class="modal-overlay" @click.self="presupuestoEditando = null">
+      <form class="modal-content" @submit.prevent="guardarPresupuesto">
+        <h3><Icono nombre="finanzas" /> Presupuesto de {{ presupuestoEditando.nombre }}</h3>
+        <label class="campo"><span>Límite mensual ($)</span>
+          <input v-model.number="presupuestoEditando.limite" type="number" min="1" placeholder="Ej: 500000" required>
+        </label>
+        <p v-if="errorPresupuesto" class="abono-error">{{ errorPresupuesto }}</p>
+        <div class="form-acciones">
+          <button type="button" class="btn-secundario" @click="presupuestoEditando = null">Cancelar</button>
+          <button v-if="presupuestoEditando.id" type="button" class="btn-eliminar" @click="quitarPresupuesto">Quitar presupuesto</button>
+          <button type="submit" class="btn-agregar">Guardar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { ref, computed, reactive, onMounted } from 'vue';
 import { api, moneda, fechaCorta, obtenerSesion } from './api';
 
@@ -311,11 +335,56 @@ const metaVacia = () => ({ nombre: '', monto_objetivo: null, monto_actual: null,
 const nuevaMeta = reactive(metaVacia());
 
 // --- CARGA DE DATOS ---
+// Presupuestos mensuales propios (para definirlos o editarlos desde la tabla)
+const misPresupuestos = ref([]);
+const presupuestoDe = (cat) => misPresupuestos.value.find(p => p.categoria_id === cat.id && p.periodo === 'mensual');
+
 const cargarPresupuestos = async () => {
   try {
-    presupuestos.value = await api(`/admin/presupuestos?mes=${mesSeleccionado.value}`);
+    const [tabla, propios] = await Promise.all([
+      api(`/admin/presupuestos?mes=${mesSeleccionado.value}`),
+      api(`/presupuestos/${sesion?.id}`)
+    ]);
+    presupuestos.value = tabla;
+    misPresupuestos.value = propios;
   } catch (e) {
     console.error(e);
+  }
+};
+
+// --- DEFINIR / EDITAR PRESUPUESTO (CU-02) ---
+const presupuestoEditando = ref(null);
+const errorPresupuesto = ref('');
+
+const abrirPresupuesto = (cat) => {
+  const actual = presupuestoDe(cat);
+  errorPresupuesto.value = '';
+  presupuestoEditando.value = { id: actual?.id || null, categoria_id: cat.id, nombre: cat.nombre, limite: actual?.monto_limite || null };
+};
+
+const guardarPresupuesto = async () => {
+  const { id, categoria_id, limite } = presupuestoEditando.value;
+  errorPresupuesto.value = '';
+  if (!(limite > 0)) {
+    errorPresupuesto.value = 'Monto inválido: el límite debe ser mayor que 0';
+    return;
+  }
+  try {
+    await api('/presupuestos', { method: 'POST', body: { id, categoria_id, monto_limite: limite, periodo: 'mensual' } });
+    presupuestoEditando.value = null;
+    await cargarPresupuestos();
+  } catch (e) {
+    errorPresupuesto.value = e.message;
+  }
+};
+
+const quitarPresupuesto = async () => {
+  try {
+    await api(`/presupuestos/${presupuestoEditando.value.id}`, { method: 'DELETE' });
+    presupuestoEditando.value = null;
+    await cargarPresupuestos();
+  } catch (e) {
+    errorPresupuesto.value = e.message;
   }
 };
 
@@ -2690,4 +2759,6 @@ tr:hover {
   font-weight: 600;
 }
 .btn-completar:hover { background: rgba(45, 187, 115, 0.08); }
+.btn-definir { background: #f0fff4; color: #1a8a4a; border: 1px solid #9ae6b4; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-definir:hover { background: #c6f6d5; }
 </style>

@@ -1,6 +1,7 @@
 <template>
   <div class="dashboard">
-    <MenuUsuario />
+    <MenuAdmin v-if="esAdmin" />
+    <MenuUsuario v-else />
 
     <main class="contenido">
       <header class="header-section">
@@ -74,6 +75,11 @@
 
 <script setup>
 import MenuUsuario from './MenuUsuario.vue';
+import MenuAdmin from './MenuAdmin.vue';
+import { obtenerSesion } from './api';
+
+// El administrador ve el menú del panel de administración
+const esAdmin = obtenerSesion()?.rol === 'admin';
 import { ref, computed, onMounted } from "vue";
 import { tema } from "./tema";
 import { useRouter } from 'vue-router';

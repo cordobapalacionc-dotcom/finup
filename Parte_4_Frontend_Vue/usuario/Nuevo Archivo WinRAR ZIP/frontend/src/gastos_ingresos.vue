@@ -1,6 +1,7 @@
 <template>
   <div class="dashboard">
-    <MenuUsuario />
+    <MenuAdmin v-if="esAdmin" />
+    <MenuUsuario v-else />
 
     <main class="main">
       <header class="header">
@@ -15,8 +16,8 @@
       <div v-for="(a, i) in alertas" :key="'alerta-' + i" class="alerta-presupuesto">
         <span>
           <Icono nombre="alerta" /> <b>Superaste tu presupuesto {{ a.periodo }} de {{ a.categoria }}:</b>
-          llevas ${{ a.acumulado.toLocaleString() }} de ${{ a.limite.toLocaleString() }}
-          ({{ a.porcentaje }}%). Te pasaste por <b>${{ a.exceso.toLocaleString() }}</b>.
+          llevas ${{ a.acumulado.toLocaleString('es-CO') }} de ${{ a.limite.toLocaleString('es-CO') }}
+          ({{ a.porcentaje }}%). Te pasaste por <b>${{ a.exceso.toLocaleString('es-CO') }}</b>.
         </span>
         <button @click="alertas.splice(i, 1)" title="Cerrar">&times;</button>
       </div>
@@ -25,21 +26,21 @@
       <section class="saldo">
         <div class="saldo-box">
           <h4>Saldo Actual</h4>
-          <h2>${{ totalSaldo.toLocaleString() }}</h2>
+          <h2>${{ totalSaldo.toLocaleString('es-CO') }}</h2>
         </div>
         <div class="card gasto">
           <p>Total Gastos</p>
-          <h3 style="color:#e53e3e;">-${{ totalGastos.toLocaleString() }}</h3>
+          <h3 style="color:#e53e3e;">-${{ totalGastos.toLocaleString('es-CO') }}</h3>
         </div>
         <div class="card ingreso">
           <p>Total Ingresos</p>
-          <h3 style="color:#2dbb73">+${{ totalIngresos.toLocaleString() }}</h3>
+          <h3 style="color:#2dbb73">+${{ totalIngresos.toLocaleString('es-CO') }}</h3>
         </div>
       </section>
 
       <div class="chart-container">
         <div class="chart-header">
-          <h3>Reporte Semanal</h3>
+          <h3>Esta semana (lunes a domingo)</h3>
           <div class="scale-selector">
             <label>Escala Máx:</label>
             <select v-model.number="escalaManual">
@@ -58,13 +59,13 @@
               <div 
                 class="bar green" 
                 :style="{ height: calcularAltura(reporteSemanal.ingresos[index]) }"
-                @mousemove="mostrarTooltip($event, `Ingresos: $${reporteSemanal.ingresos[index].toLocaleString()}`)"
+                @mousemove="mostrarTooltip($event, `Ingresos: $${reporteSemanal.ingresos[index].toLocaleString('es-CO')}`)"
                 @mouseleave="ocultarTooltip"
               ></div>
               <div 
                 class="bar red" 
                 :style="{ height: calcularAltura(reporteSemanal.gastos[index]) }"
-                @mousemove="mostrarTooltip($event, `Gastos: $${reporteSemanal.gastos[index].toLocaleString()}`)"
+                @mousemove="mostrarTooltip($event, `Gastos: $${reporteSemanal.gastos[index].toLocaleString('es-CO')}`)"
                 @mouseleave="ocultarTooltip"
               ></div>
               <span class="day-label">{{ dia }}</span>
@@ -112,7 +113,7 @@
               <td><Icono :nombre="item.tipo === 'ingreso' ? 'ingreso' : 'gasto'" /> {{ item.nombre_ingreso || item.descripcion }}</td>
               <td><Icono :nombre="iconoCategoria(nombreCategoria(item.categoria_id))" /> {{ nombreCategoria(item.categoria_id) }}</td>
               <td :class="item.tipo === 'ingreso' ? 'positivo' : 'negativo'">
-                {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ Number(item.monto).toLocaleString() }}
+                {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ Number(item.monto).toLocaleString('es-CO') }}
               </td>
               <td class="opciones-celda" @click.stop>
                 <button v-if="!item.meta_id" class="btn-edit" title="Editar" @click="editarRegistro(item)"><Icono nombre="editar" /></button>
@@ -200,7 +201,7 @@
         </div>
         <dl class="detalle">
           <dt>Tipo</dt><dd><Icono :nombre="detalle.tipo" /> {{ detalle.tipo === 'ingreso' ? 'Ingreso' : 'Gasto' }}</dd>
-          <dt>Monto</dt><dd :class="detalle.tipo === 'ingreso' ? 'positivo' : 'negativo'">{{ detalle.tipo === 'ingreso' ? '+' : '-' }}${{ Number(detalle.monto).toLocaleString() }}</dd>
+          <dt>Monto</dt><dd :class="detalle.tipo === 'ingreso' ? 'positivo' : 'negativo'">{{ detalle.tipo === 'ingreso' ? '+' : '-' }}${{ Number(detalle.monto).toLocaleString('es-CO') }}</dd>
           <dt>Categoría</dt><dd><Icono :nombre="iconoCategoria(nombreCategoria(detalle.categoria_id))" /> {{ nombreCategoria(detalle.categoria_id) }}</dd>
           <dt>Fecha</dt><dd>{{ fechaHora(detalle.fecha) }}</dd>
           <dt>Detalle</dt><dd>{{ detalle.descripcion || '—' }}</dd>
@@ -222,7 +223,7 @@
         </div>
         <p>
           Se eliminará <b>{{ pendienteEliminar.descripcion || 'este movimiento' }}</b>
-          por <b>${{ Number(pendienteEliminar.monto).toLocaleString() }}</b>.
+          por <b>${{ Number(pendienteEliminar.monto).toLocaleString('es-CO') }}</b>.
           Tu saldo y tus presupuestos se recalcularán.
           <template v-if="pendienteEliminar.meta_id"> Como es un abono a una meta, ese dinero también saldrá de la meta.</template>
         </p>
@@ -245,9 +246,13 @@
 
 <script setup>
 import MenuUsuario from './MenuUsuario.vue';
+import MenuAdmin from './MenuAdmin.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import { categorias, categoriasIngreso, categoriasGasto, etiquetaCategoria, nombreCategoria, iconoCategoria, cargarCategorias } from './categorias';
-import { fechaCorta } from './api';
+import { fechaCorta, obtenerSesion } from './api';
+
+// El administrador llega aquí desde Finanzas y ve su propio menú
+const esAdmin = obtenerSesion()?.rol === 'admin';
 
 cargarCategorias();
 import { useRouter } from 'vue-router';
@@ -417,8 +422,15 @@ const totalSaldo = computed(() => totalIngresos.value - totalGastos.value);
 
 const reporteSemanal = computed(() => {
   const data = { ingresos: [0,0,0,0,0,0,0], gastos: [0,0,0,0,0,0,0] };
+  // Solo los movimientos de la semana actual (lunes a domingo)
+  const lunes = new Date();
+  lunes.setHours(0, 0, 0, 0);
+  lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+  const siguienteLunes = new Date(lunes);
+  siguienteLunes.setDate(lunes.getDate() + 7);
   registros.value.forEach(reg => {
-    const fechaReg = reg.fecha ? new Date(reg.fecha) : new Date();
+    const fechaReg = reg.fecha ? new Date(String(reg.fecha).replace(' ', 'T')) : new Date();
+    if (fechaReg < lunes || fechaReg >= siguienteLunes) return;
     let index = fechaReg.getDay() === 0 ? 6 : fechaReg.getDay() - 1;
     if (reg.tipo === 'ingreso') data.ingresos[index] += Number(reg.monto);
     else data.gastos[index] += Number(reg.monto);

@@ -30,7 +30,7 @@
                 <span class="percentage-text">{{ calcularPorcentaje(meta) }}%</span>
               </div>
             </div>
-            <div class="goal-money"><b>${{ (meta.ahorro || 0).toLocaleString() }}</b> / ${{ meta.monto.toLocaleString() }}</div>
+            <div class="goal-money"><b>${{ (meta.ahorro || 0).toLocaleString('es-CO') }}</b> / ${{ meta.monto.toLocaleString('es-CO') }}</div>
             <div class="status-badge" :class="{ 'completed': calcularPorcentaje(meta) >= 100 }">
               {{ calcularPorcentaje(meta) >= 100 ? '¡Logrado!' : 'En progreso' }}
             </div>
@@ -43,15 +43,12 @@
           </div>
           <div style="padding-left: 20px; color: #5778a4;" class="goal-analysis" v-if="calcularPorcentaje(meta) < 100">
             <p>
-              <Icono nombre="idea" /> <b>Análisis a 6 meses:</b> Te faltan ${{ (meta.monto - (meta.ahorro || 0)).toLocaleString() }}.
-              Para lograrlo en 6 meses, necesitas ahorrar <b>${{ Math.ceil((meta.monto - (meta.ahorro || 0)) / 6).toLocaleString() }}</b> al mes.
-              <br>
-              <span :class="(meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000) ? 'alerta' : 'bien'">
-                {{ (meta.monto - (meta.ahorro || 0)) / 6 > (usuario.ahorroMensual || 120000)
-                    ? `Te faltan $${(Math.ceil((meta.monto - (meta.ahorro || 0)) / 6) - (usuario.ahorroMensual || 120000)).toLocaleString()} adicionales por mes.`
-                    : 'Tu ahorro actual es suficiente para cumplir el plazo.'
-                }}
-              </span>
+              <Icono nombre="idea" /> <b>Plan de ahorro:</b> Te faltan ${{ faltante(meta).toLocaleString('es-CO') }}.
+              <template v-if="mesesRestantes(meta) > 0">
+                Para cumplirla antes del {{ fechaCorta(meta.fecha_limite) }} ({{ mesesRestantes(meta) }} mes(es)),
+                necesitas ahorrar <b>${{ Math.ceil(faltante(meta) / mesesRestantes(meta)).toLocaleString('es-CO') }}</b> al mes.
+              </template>
+              <span v-else class="alerta">La fecha límite ya pasó: edita la meta para ampliar el plazo.</span>
             </p>
           </div>
         </div>
@@ -59,7 +56,7 @@
 
       <header class="header">
         <div>
-          <h1><Icono nombre="reportes" /> Presupuestos <span>Mensuales</span></h1>
+          <h1><Icono nombre="reportes" /> Presupuestos <span>por Categoría</span></h1>
           <p>Control de gastos por categoría</p>
         </div>
         <button class="btn btn-alt" @click="abrirModalPresupuesto()">+ Nuevo Presupuesto</button>
@@ -77,8 +74,8 @@
             </div>
           </div>
           <div class="budget-money-info">
-            <span class="gastado">${{ (pre.gastado || 0).toLocaleString() }}</span>
-            <span class="total"> / ${{ pre.limite.toLocaleString() }}</span>
+            <span class="gastado">${{ (pre.gastado || 0).toLocaleString('es-CO') }}</span>
+            <span class="total"> / ${{ pre.limite.toLocaleString('es-CO') }}</span>
           </div>
           <div class="progress-bar-bg">
             <div class="progress-fill"
@@ -88,14 +85,14 @@
           </div>
           <p>
             <Icono :nombre="pre.gastado > pre.limite ? 'error' : (pre.gastado > pre.limite * 0.8 ? 'alerta' : 'ok')" />
-            {{ pre.gastado > pre.limite ? 'Límite superado por $' + (pre.gastado - pre.limite).toLocaleString() : (pre.gastado > pre.limite * 0.8 ? 'Casi al límite' : 'En control') }}
+            {{ pre.gastado > pre.limite ? 'Límite superado por $' + (pre.gastado - pre.limite).toLocaleString('es-CO') : (pre.gastado > pre.limite * 0.8 ? 'Casi al límite' : 'En control') }}
           </p>
         </div>
       </section>
 
       <section class="summary">
         <div class="card"><p>Total de Metas</p><h3>{{ metas.length }}</h3></div>
-        <div class="card"><p>Ahorrado Total</p><h3 class="positive">${{ totalAhorrado.toLocaleString() }}</h3></div>
+        <div class="card"><p>Ahorrado Total</p><h3 class="positive">${{ totalAhorrado.toLocaleString('es-CO') }}</h3></div>
         <div class="card large">
           <p>Progreso General</p>
           <div class="progress-wrapper">
@@ -131,24 +128,24 @@
         <div v-if="modal.tipo === 'abono'" class="abono-contenido">
           <p class="abono-meta"><Icono nombre="destello" /> {{ metaAbono?.nombre }}</p>
           <p class="abono-detalle">
-            Llevas <b>${{ (metaAbono?.ahorro || 0).toLocaleString() }}</b> de ${{ (metaAbono?.monto || 0).toLocaleString() }}.
-            Te faltan <b>${{ faltanteAbono.toLocaleString() }}</b>.
+            Llevas <b>${{ (metaAbono?.ahorro || 0).toLocaleString('es-CO') }}</b> de ${{ (metaAbono?.monto || 0).toLocaleString('es-CO') }}.
+            Te faltan <b>${{ faltanteAbono.toLocaleString('es-CO') }}</b>.
           </p>
-          <p class="abono-saldo"><Icono nombre="billete" /> Saldo disponible: <b>${{ saldoDisponible.toLocaleString() }}</b> · el abono se descuenta de tu saldo</p>
+          <p class="abono-saldo"><Icono nombre="billete" /> Saldo disponible: <b>${{ saldoDisponible.toLocaleString('es-CO') }}</b> · el abono se descuenta de tu saldo</p>
           <div class="input-group">
             <label>¿Cuánto quieres abonar? ($)</label>
             <input v-model.number="montoAbono" type="number" min="1" @keydown="bloquearNegativos" placeholder="Ej: 50000" @keyup.enter="guardarAbono">
           </div>
           <p v-if="errorAbono" class="abono-error">{{ errorAbono }}</p>
           <button v-if="maximoAbono > 0" type="button" class="btn-completar" @click="montoAbono = maximoAbono">
-            {{ maximoAbono >= faltanteAbono ? 'Completar la meta' : 'Abonar todo mi saldo' }} (${{ maximoAbono.toLocaleString() }})
+            {{ maximoAbono >= faltanteAbono ? 'Completar la meta' : 'Abonar todo mi saldo' }} (${{ maximoAbono.toLocaleString('es-CO') }})
           </button>
         </div>
 
         <div v-if="modal.tipo === 'retiro'" class="abono-contenido">
           <p class="abono-meta"><Icono nombre="destello" /> {{ metaRetiro?.nombre }}</p>
           <p class="abono-detalle">
-            ¡Cumpliste esta meta! Tienes <b>${{ (metaRetiro?.ahorro || 0).toLocaleString() }}</b> ahorrados.
+            ¡Cumpliste esta meta! Tienes <b>${{ (metaRetiro?.ahorro || 0).toLocaleString('es-CO') }}</b> ahorrados.
           </p>
           <p class="abono-saldo"><Icono nombre="billete" /> Lo que saques vuelve a tu saldo para que puedas usarlo</p>
           <div class="input-group">
@@ -157,7 +154,7 @@
           </div>
           <p v-if="errorRetiro" class="abono-error">{{ errorRetiro }}</p>
           <button v-if="(metaRetiro?.ahorro || 0) > 0" type="button" class="btn-completar" @click="montoRetiro = metaRetiro.ahorro">
-            Sacar todo (${{ metaRetiro.ahorro.toLocaleString() }})
+            Sacar todo (${{ metaRetiro.ahorro.toLocaleString('es-CO') }})
           </button>
         </div>
 
@@ -204,7 +201,7 @@ cargarCategorias();
 const router = useRouter();
 const API_URL = 'http://localhost:3000/api';
 
-const usuario = ref({ id: null, nombre: '', rol: '', ahorroMensual: 120000 });
+const usuario = ref({ id: null, nombre: '', rol: '' });
 const metas = ref([]);
 const presupuestos = ref([]);
 
@@ -296,7 +293,7 @@ const guardarMeta = async () => {
 const eliminarMeta = async (index) => {
   const meta = metas.value[index];
   const confirmado = window.confirm(meta.ahorro > 0
-    ? '¿Eliminar la meta "' + meta.nombre + '"? Los $' + meta.ahorro.toLocaleString() + ' ahorrados vuelven a tu saldo.'
+    ? '¿Eliminar la meta "' + meta.nombre + '"? Los $' + meta.ahorro.toLocaleString('es-CO') + ' ahorrados vuelven a tu saldo.'
     : '¿Eliminar la meta "' + meta.nombre + '"?');
   if (!confirmado) return;
   const idMeta = meta.id;
@@ -392,7 +389,7 @@ const abrirModalAbono = async (index) => {
 const guardarAbono = async () => {
   if (!metaAbono.value || !(montoAbono.value > 0)) return;
   if (montoAbono.value > saldoDisponible.value) {
-    errorAbono.value = `No tienes saldo suficiente. Puedes abonar hasta $${Math.max(saldoDisponible.value, 0).toLocaleString()}.`;
+    errorAbono.value = `No tienes saldo suficiente. Puedes abonar hasta $${Math.max(saldoDisponible.value, 0).toLocaleString('es-CO')}.`;
     return;
   }
   try {
@@ -429,7 +426,7 @@ const abrirModalRetiro = (index) => {
 const guardarRetiro = async () => {
   if (!metaRetiro.value || !(montoRetiro.value > 0)) return;
   if (montoRetiro.value > metaRetiro.value.ahorro) {
-    errorRetiro.value = `La meta solo tiene $${metaRetiro.value.ahorro.toLocaleString()} ahorrados.`;
+    errorRetiro.value = `La meta solo tiene $${metaRetiro.value.ahorro.toLocaleString('es-CO')} ahorrados.`;
     return;
   }
   try {
@@ -449,6 +446,14 @@ const guardarRetiro = async () => {
 };
 
 const cerrarModal = () => { modal.value.activo = false; };
+
+// Plan de ahorro de cada meta según su fecha límite
+const faltante = (m) => Math.max((m.monto || 0) - (m.ahorro || 0), 0);
+const mesesRestantes = (m) => {
+  const fin = new Date(`${String(m.fecha_limite || '').slice(0, 10)}T23:59:59`);
+  const dias = (fin - new Date()) / (1000 * 60 * 60 * 24);
+  return dias > 0 ? Math.max(Math.ceil(dias / 30), 1) : 0;
+};
 
 const calcularPorcentaje = (m) => {
     if (!m.monto || m.monto === 0) return 0;

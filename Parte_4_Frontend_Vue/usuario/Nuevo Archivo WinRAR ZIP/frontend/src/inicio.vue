@@ -3,6 +3,7 @@ import MenuUsuario from './MenuUsuario.vue';
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from 'vue-router'
 import { categoriasGasto, etiquetaCategoria, cargarCategorias } from "./categorias";
+import { fechaCorta } from './api';
 
 cargarCategorias();
 
@@ -248,7 +249,7 @@ onMounted(async () => {
         <div class="card">
           <p>Saldo Actual</p>
           <h3 :class="saldoTotal >= 0 ? 'positive' : 'negative'">
-            ${{ saldoTotal.toLocaleString() }}
+            ${{ saldoTotal.toLocaleString('es-CO') }}
           </h3>
           <span class="sub-text" :class="saldoTotal >= 0 ? 'positive' : 'negative'">
             {{ saldoTotal >= 0 ? 'Total en cuenta' : 'Balance negativo' }}
@@ -257,13 +258,13 @@ onMounted(async () => {
 
         <div class="card">
           <p>Gastos Totales</p>
-          <h3 class="negative">-${{ resumen.gastos.toLocaleString() }}</h3>
+          <h3 class="negative">-${{ resumen.gastos.toLocaleString('es-CO') }}</h3>
           <span class="sub-text negative">Acumulado</span>
         </div>
 
         <div class="card">
           <p>Ingresos Totales</p>
-          <h3 class="positive">+${{ resumen.ingresos.toLocaleString() }}</h3>
+          <h3 class="positive">+${{ resumen.ingresos.toLocaleString('es-CO') }}</h3>
           <span class="sub-text positive">Acumulado</span>
         </div>
       </section>
@@ -278,7 +279,7 @@ onMounted(async () => {
             <div v-for="goal in goals" :key="goal.id" class="goal-item">
               <div class="goal-info">
                 <span>{{ goal.nombre }}</span>
-                <span>${{ Number(goal.monto_actual).toLocaleString() }} / ${{ Number(goal.monto_objetivo).toLocaleString() }}</span>
+                <span>${{ Number(goal.monto_actual).toLocaleString('es-CO') }} / ${{ Number(goal.monto_objetivo).toLocaleString('es-CO') }}</span>
               </div>
               <div class="progress-bar">
                 <div class="progress-fill" 
@@ -314,7 +315,7 @@ onMounted(async () => {
                 <div @click="Number(p.pago) < Number(p.monto) ? abrirModalPago(p) : null" 
                      style="flex: 1; cursor: pointer;">
                   <b class="pay-title">{{ p.descripcion || p.nombre_categoria }}</b>
-                  <span class="pay-date">Vence: {{ new Date(p.fecha_inicio).toLocaleDateString() }}</span>
+                  <span class="pay-date">Vence: {{ fechaCorta(p.fecha_inicio) }}</span>
                   
                   <div class="progress-container-mini">
                     <div class="progress-fill-mini" 
@@ -328,7 +329,7 @@ onMounted(async () => {
 
                 <div class="pay-amount-zone">
                   <div class="amount-text" :style="{ color: getEstadoPago(p).color }">
-                    ${{ Number(p.pago).toLocaleString() }} / ${{ Number(p.monto).toLocaleString() }}
+                    ${{ Number(p.pago).toLocaleString('es-CO') }} / ${{ Number(p.monto).toLocaleString('es-CO') }}
                   </div>
                   
                   <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
@@ -396,11 +397,11 @@ onMounted(async () => {
         <div class="info-pago-fijo">
           <div class="dato-fijo">
             <span>Monto Total del Recibo:</span>
-            <b>${{ Number(pagoSeleccionado?.monto).toLocaleString() }}</b>
+            <b>${{ Number(pagoSeleccionado?.monto).toLocaleString('es-CO') }}</b>
           </div>
           <div class="dato-fijo highlight-red">
             <span>Faltante por pagar:</span>
-            <b>${{ (pagoSeleccionado?.monto - pagoSeleccionado?.pago).toLocaleString() }}</b>
+            <b>${{ (pagoSeleccionado?.monto - pagoSeleccionado?.pago).toLocaleString('es-CO') }}</b>
           </div>
         </div>
 

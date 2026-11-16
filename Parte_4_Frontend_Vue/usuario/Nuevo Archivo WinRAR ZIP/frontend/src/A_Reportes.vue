@@ -19,6 +19,7 @@
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </aside>
 
@@ -90,7 +91,7 @@
         <!-- DISTRIBUCIÓN POR CATEGORÍAS (DONA) -->
         <section class="dona-section">
           <div class="dona-header">
-            <h3>Pie Distribución de Gastos por Categoría</h3>
+            <h3>Distribución de Gastos por Categoría</h3>
             <div class="dona-legend">
               <div v-for="cat in categorias" :key="cat.nombre" class="dona-legend-item">
                 <span class="dona-color" :style="{ background: cat.color }"></span> {{ cat.nombre }}
@@ -228,6 +229,7 @@
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { ref, computed, onMounted } from 'vue';
 import { api, moneda, fechaCorta, obtenerSesion } from './api';
 import { exportarReporte } from './exportarReporte';

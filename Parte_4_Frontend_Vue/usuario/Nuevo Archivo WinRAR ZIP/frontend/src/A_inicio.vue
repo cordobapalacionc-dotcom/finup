@@ -19,12 +19,13 @@
         <div class="icono"><Icono nombre="usuario" /></div>
         <p>{{ sesion?.nombre || 'Administrador' }}</p>
         <span>Admin</span>
+        <BotonCerrarSesion />
       </div>
     </aside>
 
     <!-- CONTENIDO -->
     <main class="contenido">
-      <h1>Pagina Principal</h1>
+      <h1>Página Principal</h1>
       <p class="subtitulo">Bienvenido al panel de administración</p>
       <p v-if="error" class="subtitulo" style="color:#e74c3c"><Icono nombre="alerta" /> {{ error }}</p>
 
@@ -83,6 +84,7 @@
 </template>
 
 <script setup>
+import BotonCerrarSesion from './BotonCerrarSesion.vue';
 import { ref, reactive, computed, onMounted } from 'vue';
 import { api, moneda, obtenerSesion } from './api';
 

@@ -28,7 +28,7 @@ const passwordReg = ref('')
 const confirmReg = ref('')
 
 // --- VALIDACIONES ---
-const hasMinLength = computed(() => passwordReg.value.length >= 10)
+const hasMinLength = computed(() => passwordReg.value.length >= 8)
 const hasLetter = computed(() => /[a-zA-Z]/.test(passwordReg.value))
 const hasNumber = computed(() => /[0-9]/.test(passwordReg.value))
 const isPasswordValid = computed(() => hasMinLength.value && hasLetter.value && hasNumber.value)
@@ -198,7 +198,7 @@ const manejarLogin = async () => {
           <div class="password-requirements">
             <div class="requirement" :class="{ 'valid': hasMinLength, 'invalid': passwordReg && !hasMinLength }">
               <span class="requirement-icon">{{ hasMinLength ? '✓' : '○' }}</span>
-              <span>Mínimo 10 caracteres</span>
+              <span>Mínimo 8 caracteres</span>
             </div>
             <div class="requirement" :class="{ 'valid': hasLetter, 'invalid': passwordReg && !hasLetter }">
               <span class="requirement-icon">{{ hasLetter ? '✓' : '○' }}</span>
@@ -227,7 +227,7 @@ const manejarLogin = async () => {
 
         <div id="volverLogin" @click="toggleSection(true)">
           <span class="arrow">←</span>
-          <span class="back-text">Back</span>
+          <span class="back-text">Volver</span>
         </div>
 
         <div class="image">
